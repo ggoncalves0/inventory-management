@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import { useState } from 'react';
+import instance from '../services/api'
 
 const AddProductForm = () => {
     const [nome, setNome] = useState('');
@@ -7,17 +7,23 @@ const AddProductForm = () => {
     const [quantidade, setQuantidade] = useState('');
     const [preco, setPreco] = useState('');
 
-    const handleSubmit = (e) => {
+    async function handleSubmit(e) {
         e.preventDefault();
         const novoProduto = { nome, categoria, quantidade, preco };
 
-        axios.post('http://127.0.0.1:5000/produtos', novoProduto)
-            .then(response => {
-                alert("Produto cadastrado com sucesso!");
-            })
-            .catch(error => {
-                alert("Erro ao cadastrar o produto.");
-            });
+        //axios.post('http://localhost:5000/produtos', novoProduto)
+        //   .then(response => {
+        //       alert("Produto cadastrado com sucesso!");
+        //    })
+        //   .catch(error => {
+        //        alert("Erro ao cadastrar o produto.");
+        //    });\
+        try {
+            await instance.post(`/produtos`, novoProduto);
+            alert(`Produto ${novoProduto.nome} cadastrado com sucesso`)
+        } catch (error) {
+            alert(`Erro ao cadastrar produto ${novoProduto.nome}: ${error.response.data ? error.response.data : error}`)
+        }
     };
 
     return (

@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
 import DeleteProductButton from './DeleteProductButton'; // Importa o botão
+import instance from '../services/api'
 
 const ProductList = () => {
     const [produtos, setProdutos] = useState([]);
@@ -9,14 +9,21 @@ const ProductList = () => {
         buscarProdutos();
     }, []);
 
-    const buscarProdutos = () => {
-        axios.get('http://127.0.0.1:5000/produtos')
-            .then(response => {
-                setProdutos(response.data);
-            })
-            .catch(error => {
-                console.error("Erro ao buscar produtos:", error);
-            });
+    async function buscarProdutos() {
+        try {
+            const response = await instance.get(`/produtos`)
+            setProdutos(response.data)
+        } catch (e) {
+            alert(`Erro ao listar produtos: ${e.data.message ? e.data.message : e}`)
+        }
+        //instance.get('/produtos')
+        //    .then(response => {
+        //        console.log(response)
+        //        setProdutos(response.data);
+        //   })
+        //    .catch(error => {
+        //        alert("Erro ao buscar produtos:", error);
+        //    });
     };
 
     const removerProdutoDaLista = (id) => {
