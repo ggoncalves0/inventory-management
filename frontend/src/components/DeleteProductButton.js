@@ -5,7 +5,7 @@ const DeleteProductButton = ({ id, onDelete }) => {
     const [errorMessage, setErrorMessage] = useState("");
 
     const excluirProduto = () => {
-        instance.delete(`/${id}`)
+        instance.delete(`/produtos/${id}`)
             .then(() => {
                 onDelete(id); 
             })

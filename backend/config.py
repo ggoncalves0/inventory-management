@@ -3,7 +3,7 @@ from flask_mysqldb import MySQL
 from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)  # Permitir requisições do front-end
+CORS(app)
 
 
 app.config['MYSQL_HOST'] = 'localhost'

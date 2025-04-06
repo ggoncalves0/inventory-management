@@ -105,7 +105,7 @@ def atualizar_produtos(id):
 
 # Endpoint excluir produtos
 
-@app.route('/produtos/<int:id>', methods=['DELETE'])
+@app.route('/produtos/<int:id>', methods=['DELETE',])
 def deletar_produto(id):
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM produtos WHERE id = %s", (id,))
