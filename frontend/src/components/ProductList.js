@@ -1,9 +1,14 @@
 import { useEffect, useState } from 'react';
-import DeleteProductButton from './DeleteProductButton'; // Importa o botão
+import DeleteProductButton from './DeleteProductButton'; 
+import EditProductForm from './EditProductForm';
 import instance from '../services/api'
 
 const ProductList = () => {
     const [produtos, setProdutos] = useState([]);
+    const [editando, setEditando] = useState(null);
+    const [buscaId, setBuscaId] = useState('');
+    const [buscaNome, setBuscaNome] = useState('');
+    const [buscaCategoria, setBuscaCategoria] = useState('');
 
     useEffect(() => {
         buscarProdutos();
@@ -11,20 +16,17 @@ const ProductList = () => {
 
     async function buscarProdutos() {
         try {
-            const response = await instance.get(`/produtos`)
-            setProdutos(response.data)
+            const params = {};
+            if (buscaId) params.id = buscaId;
+            if (buscaNome) params.nome = buscaNome;
+            if (buscaCategoria) params.categoria = buscaCategoria;
+    
+            const response = await instance.get('/produtos', { params });
+            setProdutos(response.data);
         } catch (e) {
-            alert(`Erro ao listar produtos: ${e.data.message ? e.data.message : e}`)
+            alert(`Erro ao buscar produtos: ${e.response?.data?.message || e.message}`);
         }
-        //instance.get('/produtos')
-        //    .then(response => {
-        //        console.log(response)
-        //        setProdutos(response.data);
-        //   })
-        //    .catch(error => {
-        //        alert("Erro ao buscar produtos:", error);
-        //    });
-    };
+    }
 
     const removerProdutoDaLista = (id) => {
         setProdutos(produtos.filter(produto => produto.id !== id));
@@ -33,6 +35,30 @@ const ProductList = () => {
     return (
         <div>
             <h2>Lista de Produtos</h2>
+            <div style={{ marginBottom: '1rem' }}>
+                <input
+                    type="text"
+                    placeholder='Buscar por ID'
+                    value={buscaId}
+                    onChange={(e) => setBuscaId(e.target.value)}
+                    style={{ marginRight: '10px' }}
+                />
+                <input
+                    type="text"
+                    placeholder='Buscar Por nome'
+                    value={buscaNome}
+                    onChange={(e) => setBuscaNome(e.target.value)}
+                    style={{ marginRight: '10px' }}
+                />
+                <input
+                    type="text"
+                    placeholder="Buscar por Categoria"
+                    value={buscaCategoria}
+                    onChange={(e) => setBuscaCategoria(e.target.value)}
+                    style={{ marginRight: '10px' }}
+                />
+                <button onClick={buscarProdutos}>Buscar</button>
+            </div>
             <table border="1" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                 <thead>
                     <tr>
@@ -53,12 +79,23 @@ const ProductList = () => {
                             <td>{produto.quantidade}</td>
                             <td>R$ {produto.preco}</td>
                             <td>
+                                <button onClick={() => setEditando(produto)}>Editar</button>
                                 <DeleteProductButton id={produto.id} onDelete={removerProdutoDaLista} />
                             </td>
                         </tr>
                     ))}
                 </tbody>
             </table>
+            {editando && (
+                <EditProductForm
+                    product={editando}
+                    onUpdateSuccess={() => {
+                        setEditando(null);
+                        buscarProdutos();
+                    }}
+                    onCancel={() => setEditando(null)}
+                />
+            )}
         </div>
     );
 };
