@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import instance from '../services/api'
 
-const AddProductForm = () => {
+const AddProductForm = ({ onAddSuccess, onCancel }) => {
     const [nome, setNome] = useState('');
     const [categoria, setCategoria] = useState('');
     const [quantidade, setQuantidade] = useState('');
@@ -11,18 +11,12 @@ const AddProductForm = () => {
         e.preventDefault();
         const novoProduto = { nome, categoria, quantidade, preco };
 
-        //axios.post('http://localhost:5000/produtos', novoProduto)
-        //   .then(response => {
-        //       alert("Produto cadastrado com sucesso!");
-        //    })
-        //   .catch(error => {
-        //        alert("Erro ao cadastrar o produto.");
-        //    });\
         try {
             await instance.post(`/produtos`, novoProduto);
-            alert(`Produto ${novoProduto.nome} cadastrado com sucesso`)
+            alert(`Produto ${novoProduto.nome} cadastrado com sucesso`);
+            onAddSuccess();
         } catch (error) {
-            alert(`Erro ao cadastrar produto ${novoProduto.nome}: ${error.response.data ? error.response.data : error}`)
+            alert(`Erro ao cadastrar produto ${novoProduto.nome}: ${error.response?.data?.message || error.message}`);
         }
     };
 
@@ -32,26 +26,27 @@ const AddProductForm = () => {
             <form onSubmit={handleSubmit}>
                 <div>
                     <label>Nome:</label>
-                    <br></br>
+                    <br />
                     <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required />
                 </div>
                 <div>
                     <label>Categoria:</label>
-                    <br></br>
+                    <br />
                     <input type="text" value={categoria} onChange={(e) => setCategoria(e.target.value)} required />
                 </div>
                 <div>
                     <label>Quantidade:</label>
-                    <br></br>
+                    <br />
                     <input type="number" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} required />
                 </div>
                 <div>
                     <label>Preço:</label>
-                    <br></br>
-                    <input type="number" value={preco} onChange={(e) => setPreco(e.target.value)} required />
+                    <br />
+                    <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} required />
                 </div>
-                <br></br>
+                <br />
                 <button type="submit">Cadastrar</button>
+                <button type="button" onClick={onCancel} style={{ marginLeft: '10px' }}>Cancelar</button>
             </form>
         </div>
     );
