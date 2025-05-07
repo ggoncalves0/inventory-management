@@ -13,10 +13,11 @@ def cadastrar_produto():
         return jsonify({"erro": "Apenas o usuário autorizado pode adicionar produtos."}), 403
 
     data = request.json
-    nome = data['nome']
-    categoria = data['categoria']
-    quantidade = data['quantidade']
-    preco = data['preco']
+    nome = data['nome'],
+    categoria = data['categoria'],
+    quantidade = data['quantidade'],
+    preco = data['preco'],
+    usuario_id = usuario_id
 
     if not nome or not categoria or not quantidade or not preco:
         return jsonify({"erro": "Todos os campos (nome, categoria, quantidade e preço são obrigatórios)"}), 400
@@ -28,8 +29,8 @@ def cadastrar_produto():
         return jsonify({"erro": "Um produto com este nome já está cadastrado!"}), 409
 
     cur.execute(
-        "INSERT INTO produtos (nome, categoria, quantidade, preco) VALUES (%s, %s, %s, %s)",
-        (nome, categoria, quantidade, preco)
+        "INSERT INTO produtos (nome, categoria, quantidade, preco, usuario_id) VALUES (%s, %s, %s, %s, %s)",
+        (nome, categoria, quantidade, preco, usuario_id)
     )
     mysql.connection.commit()
     cur.close()

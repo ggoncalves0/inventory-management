@@ -16,7 +16,7 @@ const AddProductForm = ({ onAddSuccess, onCancel }) => {
             alert(`Produto ${novoProduto.nome} cadastrado com sucesso`);
             onAddSuccess();
         } catch (error) {
-            alert(`Erro ao cadastrar produto ${novoProduto.nome}: ${error.response?.data?.message || error.message}`);
+            alert(`Erro ao cadastrar produto ${novoProduto.nome}: ${error.response?.data?.erro || error.message}`);
         }
     };
 
