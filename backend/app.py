@@ -1,5 +1,3 @@
-from flask import Flask
-from flask_jwt_extended import JWTManager
 from config import app, jwt
 from routes.products import produtos_bp
 from routes.auth import auth_bp

@@ -73,7 +73,7 @@ const ProductList = () => {
                     onChange={(e) => setBuscaCategoria(e.target.value)}
                 />
                 <button onClick={buscarProdutos}>Buscar</button>
-                {usuarioId === "2" && (
+                {usuarioId === "1" && (
                     <button onClick={() => setAdicionando(!adicionando)}>
                         {adicionando ? 'Cancelar' : 'Adicionar Produto'}
                     </button>
@@ -100,7 +100,7 @@ const ProductList = () => {
                         <th>Categoria</th>
                         <th>Quantidade</th>
                         <th>Preço</th>
-                        {usuarioId === "2" && <th>Ações</th>}
+                        {usuarioId === "1" && <th>Ações</th>}
                     </tr>
                 </thead>
                 <tbody>
@@ -111,7 +111,7 @@ const ProductList = () => {
                             <td>{produto.categoria}</td>
                             <td>{produto.quantidade}</td>
                             <td>R$ {produto.preco}</td>
-                            {usuarioId === "2" && (
+                            {usuarioId === "1" && (
                                 <td className="actions">
                                     <button onClick={() => setEditando(produto)}>Editar</button>
                                     <DeleteProductButton

@@ -15,11 +15,12 @@ def register():
     if not username or not senha:
         return jsonify({"erro": "Usuário e senha são obrigatórios"}), 400
 
-    hashed = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt())
+    hashed = bcrypt.hashpw(senha.encode('utf-8'), bcrypt.gensalt()).decode('utf-8')
 
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM usuarios WHERE username = %s", (username,))
     if cur.fetchone():
+        cur.close()
         return jsonify({"erro": "Usuário já existe"}), 409
 
     cur.execute("INSERT INTO usuarios (username, senha) VALUES (%s, %s)", (username, hashed))

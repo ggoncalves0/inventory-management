@@ -9,18 +9,22 @@ produtos_bp = Blueprint('produtos', __name__)
 @jwt_required()
 def cadastrar_produto():
     usuario_id = int(get_jwt_identity())
-    if usuario_id != 2:
+    if usuario_id != 1:
         return jsonify({"erro": "Apenas o usuário autorizado pode adicionar produtos."}), 403
 
-    data = request.json
-    nome = data['nome'],
-    categoria = data['categoria'],
-    quantidade = data['quantidade'],
-    preco = data['preco'],
-    usuario_id = usuario_id
+    data = request.get_json(silent=True) or {}
+    nome = data.get('nome')
+    categoria = data.get('categoria')
+    quantidade = data.get('quantidade')
+    preco = data.get('preco')
 
-    if not nome or not categoria or not quantidade or not preco:
+    if not nome or not categoria or quantidade is None or preco is None:
         return jsonify({"erro": "Todos os campos (nome, categoria, quantidade e preço são obrigatórios)"}), 400
+    try:
+        quantidade = int(quantidade)
+        preco = float(preco)
+    except (ValueError, TypeError):
+        return jsonify({"erro": "Quantidade deve ser um número inteiro e preço deve ser um número decimal"}), 400
 
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM produtos WHERE nome = %s", (nome,))
@@ -77,7 +81,7 @@ def busca_produto(id):
     produto = cur.fetchone()
     cur.close()
     if produto:
-        return jsonify({"id": produto[0], "nome": produto[1], "quantidade": produto[2], "preco": produto[3]})
+        return jsonify({"id": produto[0], "nome": produto[1], "categoria": produto[2], "quantidade": produto[3], "preco": produto[4]})
     else:
         return jsonify({"erro": "Produto não encontrado"}), 404
 
@@ -86,24 +90,34 @@ def busca_produto(id):
 @jwt_required()
 def atualizar_produto(id):
     usuario_id = int(get_jwt_identity())
-    if usuario_id != 2:
+    if usuario_id != 1:
         return jsonify({"erro": "Apenas o usuário autorizado pode editar produtos."}), 403
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     nome = data.get('nome')
     categoria = data.get('categoria')
     quantidade = data.get('quantidade')
     preco = data.get('preco')
+
+    if not nome or not categoria or quantidade is None or preco is None:
+        return jsonify({"erro": "Todos os campos (nome, categoria, quantidade e preço são obrigatórios)"}), 400
+    try:
+        quantidade = int(quantidade)
+        preco = float(preco)
+    except (ValueError, TypeError):
+        return jsonify({"erro": "Quantidade deve ser um número inteiro e preço deve ser um número decimal"}), 400
 
     cur = mysql.connection.cursor()
     cur.execute("SELECT * FROM produtos WHERE id = %s", (id,))
     produto = cur.fetchone()
 
     if not produto:
+        cur.close()
         return jsonify({'erro': 'Produto não encontrado'}), 404
 
     cur.execute("SELECT * FROM produtos WHERE nome = %s AND id != %s", (nome, id))
     if cur.fetchone():
+        cur.close()
         return jsonify({"erro": 'Já existe um produto com esse nome'}), 400
 
     cur.execute("UPDATE produtos SET nome = %s, categoria = %s, quantidade = %s, preco = %s WHERE id = %s",
@@ -118,7 +132,7 @@ def atualizar_produto(id):
 @jwt_required()
 def deletar_produto(id):
     usuario_id = int(get_jwt_identity())
-    if usuario_id != 2:
+    if usuario_id != 1:
         return jsonify({"erro": "Apenas o usuário autorizado pode excluir produtos."}), 403
 
     cur = mysql.connection.cursor()
