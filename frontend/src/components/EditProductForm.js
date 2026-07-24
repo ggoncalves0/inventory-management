@@ -24,27 +24,32 @@ function EditProductForm({ product, onUpdateSuccess, onCancel }) {
     };
   
     return (
-      <form onSubmit={handleSubmit}>
-        {erro && <p style={{ color: 'red' }}>{erro}</p>}
-        <input value={nome} onChange={(e) => setNome(e.target.value)} required />
-        <input value={categoria} onChange={(e) => setCategoria(e.target.value)} required />
-        <input
-          type="number"
-          value={quantidade}
-          onChange={(e) => setQuantidade(e.target.value)}
-          required
-        />
-        <input
-          type="number"
-          step="0.01"
-          value={preco}
-          onChange={(e) => setPreco(e.target.value)}
-          required
-        />
-        <button type="submit">Atualizar</button>
-        <button type="button" onClick={onCancel}>Cancelar</button>
-      </form>
-    );
+  <form onSubmit={handleSubmit}>
+    <h3>Editar Produto</h3>
+    {erro && <p style={{ color: 'red' }}>{erro}</p>}
+    <label>Nome:</label>
+    <input value={nome} onChange={(e) => setNome(e.target.value)} required />
+    <label>Categoria:</label>
+    <input value={categoria} onChange={(e) => setCategoria(e.target.value)} required />
+    <label>Quantidade:</label>
+    <input
+      type="number"
+      value={quantidade}
+      onChange={(e) => setQuantidade(e.target.value)}
+      required
+    />
+    <label>Preço:</label>
+    <input
+      type="number"
+      step="0.01"
+      value={preco}
+      onChange={(e) => setPreco(e.target.value)}
+      required
+    />
+    <button type="submit">Atualizar</button>
+    <button type="button" onClick={onCancel}>Cancelar</button>
+  </form>
+);
   }
   
   export default EditProductForm;

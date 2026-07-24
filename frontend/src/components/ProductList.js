@@ -46,12 +46,14 @@ const ProductList = () => {
     };
 
     return (
-        <div className="product-page">
-            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button onClick={logout} className="logout-button">Logout</button>
+        <div className="product-page ">
+            <div className="product-page-header">
+                <div className="title-block">
+                    <span className="eyebrow">Controle de Estoque</span>
+                    <h2>Lista de Produtos</h2>
+                </div>
+                <button onClick={logout} className="logout-button">Sair</button>
             </div>
-
-            <h2>Lista de Produtos</h2>
 
             <div className="filters">
                 <input
@@ -104,11 +106,16 @@ const ProductList = () => {
                     </tr>
                 </thead>
                 <tbody>
+                    {produtos.length === 0 && (
+                        <tr>
+                            <td colSpan={usuarioId === "1" ? 6 : 5} className="no-products">Nenhum produto encontrado.</td>
+                        </tr>
+                    )}
                     {produtos.map((produto) => (
                         <tr key={produto.id}>
                             <td>{produto.id}</td>
                             <td>{produto.nome}</td>
-                            <td>{produto.categoria}</td>
+                            <td><span className="category-tag">{produto.categoria}</span></td>
                             <td>{produto.quantidade}</td>
                             <td>R$ {produto.preco}</td>
                             {usuarioId === "1" && (
