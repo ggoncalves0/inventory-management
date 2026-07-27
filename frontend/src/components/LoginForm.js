@@ -9,9 +9,15 @@ const LoginPage = () => {
     const [erro, setErro] = useState('');
     const navigate = useNavigate();
 
-    const handleLogin = async (e) => {
+const handleLogin = async (e) => {
         e.preventDefault();
         setErro('');
+
+        if (!username || !senha) {
+            setErro('Preencha usuário e senha.');
+            return;
+        }
+
         try {
             const response = await instance.post('/login', {
                 username,
@@ -28,7 +34,7 @@ const LoginPage = () => {
 
     return (
         <div className="login-container">
-            <form className="login-form" onSubmit={handleLogin}>
+            <form className="login-form" onSubmit={handleLogin} noValidate>
                 <h2>Login</h2>
 
                 <label>Usuário</label>
@@ -36,7 +42,6 @@ const LoginPage = () => {
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    required
                 />
 
                 <label>Senha</label>
@@ -44,12 +49,11 @@ const LoginPage = () => {
                     type="password"
                     value={senha}
                     onChange={(e) => setSenha(e.target.value)}
-                    required
                 />
 
                 <button type="submit" style={{fontSize: '1rem', padding: '10px 0'}}>Entrar</button>
 
-                {erro && <p style={{ color: 'red', marginTop: '10px' }}>{erro}</p>}
+                {erro && <p className="form-message erro">{erro}</p>}
 
                 <p style={{ marginTop: '1rem'}}>
                     Não possui uma conta?{' '}

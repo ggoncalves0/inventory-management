@@ -1,27 +1,33 @@
 import { useState } from 'react';
 import instance from '../services/api';
+import ConfirmModal from './ConfirmModal';
 
-const DeleteProductButton = ({ id, onDelete }) => {
-    const [errorMessage, setErrorMessage] = useState("");
+const DeleteProductButton = ({ id, onDelete, onFeedback }) => {
+    const [mostrarModal, setMostrarModal] = useState(false);
 
     const excluirProduto = () => {
-        const confirmar = window.confirm("Tem certeza que deseja excluir esse produto?");
-        if (!confirmar) return;
-
         instance.delete(`/produtos/${id}`)
             .then(() => {
                 onDelete(id);
+                onFeedback && onFeedback('sucesso', 'Produto excluído com sucesso.');
             })
-            .catch(error => {
-                setErrorMessage("Erro: Produto não encontrado.");
-            });
+            .catch(() => {
+                onFeedback && onFeedback('erro', 'Erro ao excluir produto. Tente novamente.');
+            })
+            .finally(() => setMostrarModal(false));
     };
 
     return (
-        <div>
-            <button onClick={excluirProduto}>Excluir</button>
-            {errorMessage && <p style={{ color: 'red' }}>{errorMessage}</p>}
-        </div>
+        <>
+            <button onClick={() => setMostrarModal(true)}>Excluir</button>
+            {mostrarModal && (
+                <ConfirmModal
+                    mensagem="Tem certeza que deseja excluir esse produto? Essa ação não pode ser desfeita."
+                    onConfirm={excluirProduto}
+                    onCancel={() => setMostrarModal(false)}
+                />
+            )}
+        </>
     );
 };
 

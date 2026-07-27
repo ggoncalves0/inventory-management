@@ -13,13 +13,20 @@ const ProductList = () => {
     const [buscaId, setBuscaId] = useState('');
     const [buscaNome, setBuscaNome] = useState('');
     const [buscaCategoria, setBuscaCategoria] = useState('');
+    const [toast, setToast] = useState(null);
 
     const usuarioId = localStorage.getItem('usuario_id');
     const navigate = useNavigate();
 
     useEffect(() => {
         buscarProdutos();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    function mostrarToast(tipo, texto) {
+        setToast({ tipo, texto });
+        setTimeout(() => setToast(null), 3000);
+    }
 
     async function buscarProdutos() {
         try {
@@ -31,7 +38,7 @@ const ProductList = () => {
             const response = await instance.get('/produtos', { params });
             setProdutos(response.data);
         } catch (e) {
-            alert(`Erro ao buscar produtos: ${e.response?.data?.message || e.message}`);
+            mostrarToast('erro', e.response?.data?.message || e.message);
         }
     }
 
@@ -46,7 +53,7 @@ const ProductList = () => {
     };
 
     return (
-        <div className="product-page ">
+        <div className="product-page">
             <div className="product-page-header">
                 <div className="title-block">
                     <span className="eyebrow">Controle de Estoque</span>
@@ -54,6 +61,8 @@ const ProductList = () => {
                 </div>
                 <button onClick={logout} className="logout-button">Sair</button>
             </div>
+
+            {toast && <div className={`toast ${toast.tipo}`}>{toast.texto}</div>}
 
             <div className="filters">
                 <input
@@ -85,9 +94,10 @@ const ProductList = () => {
             {adicionando && (
                 <div className="form-card">
                     <AddProductForm
-                        onAddSuccess={() => {
+                        onAddSuccess={(msg) => {
                             setAdicionando(false);
                             buscarProdutos();
+                            mostrarToast('sucesso', msg);
                         }}
                         onCancel={() => setAdicionando(false)}
                     />
@@ -122,24 +132,25 @@ const ProductList = () => {
                                 <td className="actions">
                                     <button onClick={() => setEditando(produto)}>Editar</button>
                                     <DeleteProductButton
-                                    id={produto.id}
-                                    onDelete={removerProdutoDaLista}
-                                    confirmar={true}
+                                        id={produto.id}
+                                        onDelete={removerProdutoDaLista}
+                                        onFeedback={mostrarToast}
                                     />
-                                    </td>
-                                )}
-                                </tr>
-                            ))}
-                    </tbody>
+                                </td>
+                            )}
+                        </tr>
+                    ))}
+                </tbody>
             </table>
 
             {editando && (
                 <div className="form-card">
                     <EditProductForm
                         product={editando}
-                        onUpdateSuccess={() => {
+                        onUpdateSuccess={(msg) => {
                             setEditando(null);
                             buscarProdutos();
+                            mostrarToast('sucesso', msg);
                         }}
                         onCancel={() => setEditando(null)}
                     />

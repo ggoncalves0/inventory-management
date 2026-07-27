@@ -6,47 +6,70 @@ const AddProductForm = ({ onAddSuccess, onCancel }) => {
     const [categoria, setCategoria] = useState('');
     const [quantidade, setQuantidade] = useState('');
     const [preco, setPreco] = useState('');
+    const [erro, setErro] = useState('');
 
     async function handleSubmit(e) {
         e.preventDefault();
+        setErro('');
+
+        if (!nome.trim() || !categoria.trim()) {
+            setErro('Preencha o nome e a categoria do produto.');
+            return;
+        }
+        if (quantidade === '' || isNaN(Number(quantidade)) || Number(quantidade) < 0) {
+            setErro('Quantidade precisa ser um número válido (0 ou maior).');
+            return;
+        }
+        if (preco === '' || isNaN(Number(preco)) || Number(preco) < 0) {
+            setErro('Preço precisa ser um número válido (0 ou maior).');
+            return;
+        }
+
         const novoProduto = { nome, categoria, quantidade, preco };
 
         try {
             await instance.post(`/produtos`, novoProduto);
-            alert(`Produto ${novoProduto.nome} cadastrado com sucesso`);
-            onAddSuccess();
+            onAddSuccess(`Produto "${novoProduto.nome}" cadastrado com sucesso.`);
         } catch (error) {
-            alert(`Erro ao cadastrar produto ${novoProduto.nome}: ${error.response?.data?.erro || error.message}`);
+            setErro(error.response?.data?.erro || 'Erro ao cadastrar produto.');
+        }
+    };
+
+    // Bloqueia caracteres que o input[type=number] aceita mas não fazem sentido aqui (e, +, -)
+    const bloquearCaracteresInvalidos = (e) => {
+        if (['e', 'E', '+', '-'].includes(e.key)) {
+            e.preventDefault();
         }
     };
 
     return (
         <div>
             <h2>Cadastrar Produto</h2>
-            <form onSubmit={handleSubmit}>
-                <div>
-                    <label>Nome:</label>
-                    <br />
-                    <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} required />
-                </div>
-                <div>
-                    <label>Categoria:</label>
-                    <br />
-                    <input type="text" value={categoria} onChange={(e) => setCategoria(e.target.value)} required />
-                </div>
-                <div>
-                    <label>Quantidade:</label>
-                    <br />
-                    <input type="number" value={quantidade} onChange={(e) => setQuantidade(e.target.value)} required />
-                </div>
-                <div>
-                    <label>Preço:</label>
-                    <br />
-                    <input type="number" step="0.01" value={preco} onChange={(e) => setPreco(e.target.value)} required />
-                </div>
-                <br />
+            {erro && <p className="form-message erro">{erro}</p>}
+            <form onSubmit={handleSubmit} noValidate>
+                <label>Nome:</label>
+                <input type="text" value={nome} onChange={(e) => setNome(e.target.value)} />
+                <label>Categoria:</label>
+                <input type="text" value={categoria} onChange={(e) => setCategoria(e.target.value)} />
+                <label>Quantidade:</label>
+                <input
+                    type="number"
+                    min="0"
+                    value={quantidade}
+                    onChange={(e) => setQuantidade(e.target.value)}
+                    onKeyDown={bloquearCaracteresInvalidos}
+                />
+                <label>Preço:</label>
+                <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={preco}
+                    onChange={(e) => setPreco(e.target.value)}
+                    onKeyDown={bloquearCaracteresInvalidos}
+                />
                 <button type="submit">Cadastrar</button>
-                <button type="button" onClick={onCancel} style={{ marginLeft: '10px' }}>Cancelar</button>
+                <button type="button" onClick={onCancel}>Cancelar</button>
             </form>
         </div>
     );

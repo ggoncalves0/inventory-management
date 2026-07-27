@@ -7,13 +7,23 @@ export default function RegisterForm() {
   const [username, setUsername] = useState('');
   const [senha, setSenha] = useState('');
   const [erro, setErro] = useState('');
+  const [sucesso, setSucesso] = useState('');
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    setErro('');
+    setSucesso('');
+
+    if (!username || !senha) {
+      setErro('Preencha usuário e senha.');
+      return;
+    }
+
     try {
       await api.post('/register', { username, senha });
-      navigate('/');
+      setSucesso('Conta registrada com sucesso! Redirecionando para o login...');
+      setTimeout(() => navigate('/'), 1500);
     } catch (err) {
       setErro('Erro ao registrar, Usuário já existe');
     }
@@ -21,27 +31,28 @@ export default function RegisterForm() {
 
   return (
     <div className="register-container">
-      <form onSubmit={handleRegister}>
+      <form onSubmit={handleRegister} noValidate>
         <h2>Registrar</h2>
         <input
           type="text"
           placeholder="Usuário"
           value={username}
           onChange={e => setUsername(e.target.value)}
-          required
+          disabled={!!sucesso}
         />
         <input
           type="password"
           placeholder="Senha"
           value={senha}
           onChange={e => setSenha(e.target.value)}
-          required
+          disabled={!!sucesso}
         />
-        <button type="submit">Registrar</button>
+        <button type="submit" disabled={!!sucesso}>Registrar</button>
         <p>
           Já possui uma conta? <Link to="/">Faça login</Link>
         </p>
-        {erro && <p className="erro">{erro}</p>}
+        {erro && <p className="form-message erro">{erro}</p>}
+        {sucesso && <p className="form-message sucesso">{sucesso}</p>}
       </form>
     </div>
   );
