@@ -1,73 +1,98 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import instance from '../services/api';
-import '../styles/login.css';
+import { Link } from 'react-router-dom';
+import { AnimatePresence, motion, useAnimate } from 'motion/react';
+import { ArrowRight, CircleAlert, Lock, User } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { mensagemDeErro } from '../services/api';
+import Field from './Field';
+import Button from './Button';
 
-const LoginPage = () => {
+const tremer = { x: [0, -10, 10, -7, 7, -3, 3, 0] };
+
+const LoginForm = () => {
+    const { login } = useAuth();
     const [username, setUsername] = useState('');
     const [senha, setSenha] = useState('');
     const [erro, setErro] = useState('');
-    const navigate = useNavigate();
+    const [carregando, setCarregando] = useState(false);
+    const [escopo, animar] = useAnimate();
 
-const handleLogin = async (e) => {
+    const falhar = (mensagem) => {
+        setErro(mensagem);
+        animar(escopo.current, tremer, { duration: 0.45 });
+    };
+
+    const handleLogin = async (e) => {
         e.preventDefault();
         setErro('');
 
-        if (!username || !senha) {
-            setErro('Preencha usuário e senha.');
+        if (!username.trim() || !senha) {
+            falhar('Preencha usuário e senha.');
             return;
         }
 
+        setCarregando(true);
         try {
-            const response = await instance.post('/login', {
-                username,
-                senha
-            });
-
-            localStorage.setItem('token', response.data.access_token);
-            localStorage.setItem('usuario_id', response.data.usuario_id);
-            navigate('/produtos');
+            // Após o login o PublicOnlyRoute redireciona para /produtos
+            await login(username.trim(), senha);
         } catch (error) {
-            setErro('Usuário ou senha incorretos');
+            falhar(error.response?.status === 401
+                ? 'Usuário ou senha incorretos.'
+                : mensagemDeErro(error, 'Não foi possível entrar.'));
+            setCarregando(false);
         }
     };
 
     return (
-        <div className="login-container">
-            <form className="login-form" onSubmit={handleLogin} noValidate>
-                <h2>Login</h2>
+        <form ref={escopo} className="auth-form" onSubmit={handleLogin} noValidate>
+            <span className="eyebrow">Acesso</span>
+            <h2>Bem-vindo de volta</h2>
+            <p className="auth-sub">Entre com suas credenciais para acessar o painel.</p>
 
-                <label>Usuário</label>
-                <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                />
+            <Field
+                label="Usuário"
+                icon={User}
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                autoComplete="username"
+                maxLength={50}
+                invalido={!!erro && !username.trim()}
+                autoFocus
+            />
+            <Field
+                label="Senha"
+                icon={Lock}
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                autoComplete="current-password"
+                maxLength={72}
+                invalido={!!erro && !senha}
+            />
 
-                <label>Senha</label>
-                <input
-                    type="password"
-                    value={senha}
-                    onChange={(e) => setSenha(e.target.value)}
-                />
-
-                <button type="submit" style={{fontSize: '1rem', padding: '10px 0'}}>Entrar</button>
-
-                {erro && <p className="form-message erro">{erro}</p>}
-
-                <p style={{ marginTop: '1rem'}}>
-                    Não possui uma conta?{' '}
-                    <button
-                        type="button"
-                        className="link-button"
-                        onClick={() => navigate('/register')}
+            <AnimatePresence>
+                {erro && (
+                    <motion.p
+                        className="form-message erro"
+                        role="alert"
+                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
+                        animate={{ opacity: 1, height: 'auto', marginTop: 4 }}
+                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
                     >
-                        Registre-se
-                    </button>
-                </p>
-            </form>
-        </div>
+                        <CircleAlert size={16} /> {erro}
+                    </motion.p>
+                )}
+            </AnimatePresence>
+
+            <Button type="submit" className="btn-block" carregando={carregando}>
+                Entrar <ArrowRight size={17} className="btn-arrow" aria-hidden="true" />
+            </Button>
+
+            <p className="auth-switch">
+                Não possui uma conta? <Link to="/register">Registre-se</Link>
+            </p>
+        </form>
     );
 };
 
-export default LoginPage;
+export default LoginForm;
