@@ -1,6 +1,8 @@
 import os
+from datetime import datetime, timezone
 
 from flask import jsonify
+from flask_jwt_extended import create_access_token, get_jwt
 from werkzeug.exceptions import HTTPException
 
 from config import app, jwt
@@ -18,6 +20,41 @@ def headers_de_seguranca(resposta):
     resposta.headers['Referrer-Policy'] = 'no-referrer'
     resposta.headers['Content-Security-Policy'] = "default-src 'none'; frame-ancestors 'none'"
     resposta.headers['Cache-Control'] = 'no-store'
+    return resposta
+
+
+@app.after_request
+def renovar_sessao(resposta):
+    """Sessão deslizante: quem está usando o app não é derrubado no meio do trabalho.
+
+    Se o token da requisição já passou da metade da validade, devolve um novo no header
+    X-Novo-Token (o frontend troca o salvo). Uma sessão parada continua expirando em
+    JWT_ACCESS_TOKEN_EXPIRES, e nenhuma passa de JWT_SESSAO_MAXIMA desde o login: o novo
+    token carrega o início da sessão e nunca vence depois desse teto.
+    """
+    if resposta.status_code == 401:
+        return resposta
+    try:
+        dados = get_jwt()
+    except RuntimeError:
+        return resposta  # rota sem autenticação (login, cadastro)
+    if not dados:
+        return resposta
+
+    validade = app.config['JWT_ACCESS_TOKEN_EXPIRES']
+    agora = datetime.now(timezone.utc)
+    vence_em = datetime.fromtimestamp(dados['exp'], timezone.utc)
+    inicio = datetime.fromtimestamp(dados.get('inicio_sessao', dados['iat']), timezone.utc)
+    fim_da_sessao = inicio + app.config['JWT_SESSAO_MAXIMA']
+
+    if vence_em - agora > validade / 2 or agora >= fim_da_sessao:
+        return resposta
+
+    resposta.headers['X-Novo-Token'] = create_access_token(
+        identity=dados['sub'],
+        additional_claims={'inicio_sessao': int(inicio.timestamp())},
+        expires_delta=min(validade, fim_da_sessao - agora),
+    )
     return resposta
 
 

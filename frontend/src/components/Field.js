@@ -1,15 +1,17 @@
 import { useId, useState } from 'react';
 import { CircleAlert, Eye, EyeOff } from 'lucide-react';
 
-// Campo com rótulo acima, botão de mostrar/ocultar senha
-// e mensagem de erro própria (ligada ao input por aria-describedby).
-const Field = ({ label, type = 'text', invalido = false, erro, className = '', 'aria-describedby': descricao, ...props }) => {
+// Campo com rótulo acima, botão de mostrar/ocultar senha, mensagem de erro própria e uma dica
+// neutra opcional (as duas ligadas ao input por aria-describedby). Com erro, a dica não aparece.
+const Field = ({ label, type = 'text', invalido = false, erro, dica, className = '', 'aria-describedby': descricao, ...props }) => {
     const id = useId();
     const idErro = `${id}-erro`;
+    const idDica = `${id}-dica`;
     const [mostrarSenha, setMostrarSenha] = useState(false);
     const ehSenha = type === 'password';
     const marcado = invalido || !!erro;
-    const descritores = [descricao, erro && idErro].filter(Boolean).join(' ') || undefined;
+    const mostrarDica = !!dica && !erro;
+    const descritores = [descricao, erro && idErro, mostrarDica && idDica].filter(Boolean).join(' ') || undefined;
 
     return (
         <div className={`field ${ehSenha ? 'has-toggle' : ''} ${marcado ? 'invalid' : ''} ${className}`}>
@@ -37,6 +39,9 @@ const Field = ({ label, type = 'text', invalido = false, erro, className = '', '
                 <p id={idErro} className="field-erro">
                     <CircleAlert size={14} aria-hidden="true" /> {erro}
                 </p>
+            )}
+            {mostrarDica && (
+                <p id={idDica} className="field-dica" role="status">{dica}</p>
             )}
         </div>
     );

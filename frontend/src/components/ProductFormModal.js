@@ -1,10 +1,13 @@
-import { useRef, useState } from 'react';
-import { CircleAlert } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { CircleAlert, History } from 'lucide-react';
 import instance, { mensagemDeErro } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import Modal from './Modal';
 import Field from './Field';
 import Button from './Button';
 import { formatarCodigo } from '../utils/formatos';
+import { categoriaExistente } from '../utils/categorias';
+import { limparRascunho, salvarRascunho } from '../utils/rascunho';
 
 // Mesmos limites do backend (validators.py)
 const QUANTIDADE_MAX = 2147483647;
@@ -52,25 +55,52 @@ function validar({ nome, categoria, quantidade, preco }) {
     return { erros, valor };
 }
 
-function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) {
+const valoresDe = (produto) => ({
+    nome: produto?.nome ?? '',
+    categoria: produto?.categoria ?? '',
+    quantidade: produto ? String(produto.quantidade) : '',
+    preco: produto ? formatoPreco.format(produto.preco) : '',
+});
+
+// `rascunho`: valores recuperados depois que a sessão expirou com este formulário aberto
+function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, rascunho }) {
+    const { usuario } = useAuth();
     // Guardado em estado para o título não mudar enquanto o modal anima a saída
     const [produto] = useState(produtoInicial);
     const editando = !!produto;
 
-    const [valores, setValores] = useState(() => ({
-        nome: produto?.nome ?? '',
-        categoria: produto?.categoria ?? '',
-        quantidade: produto ? String(produto.quantidade) : '',
-        preco: produto ? formatoPreco.format(produto.preco) : '',
-    }));
+    // Valores de quando o formulário abriu: comparados aos atuais para saber se há algo a guardar
+    const [originais] = useState(() => valoresDe(produto));
+    const [recuperado] = useState(() => !!rascunho);
+    const [valores, setValores] = useState(() => (rascunho ? { ...originais, ...rascunho } : originais));
     const [erros, setErros] = useState({});
     const [erro, setErro] = useState('');
+    const [dicaCategoria, setDicaCategoria] = useState('');
     const [salvando, setSalvando] = useState(false);
     const escopo = useRef(null);
+
+    // Enquanto o formulário está aberto, o que foi digitado fica guardado nesta aba: se a sessão expirar,
+    // ele reabre depois do novo login. Fechar ou salvar descarta (ver ProductList).
+    useEffect(() => {
+        // Sessão acabou de cair (usuario vira null antes da tela sair): mantém o rascunho como estava,
+        // senão ele seria regravado sem dono e descartado depois do novo login.
+        if (!usuario) return;
+        const alterado = CAMPOS.some((c) => valores[c] !== originais[c]);
+        if (alterado) salvarRascunho({ usuario: usuario?.username, produtoId: produto?.id ?? null, valores });
+        else limparRascunho();
+    }, [valores, originais, produto, usuario]);
 
     const alterar = (campo, valor) => {
         setValores((atual) => ({ ...atual, [campo]: valor }));
         setErros((atual) => (atual[campo] ? { ...atual, [campo]: undefined } : atual));
+    };
+
+    // "periféricos", "Perifericos" -> "Periféricos": usa a categoria já cadastrada em vez de criar uma variação
+    const ajustarCategoria = () => {
+        const existente = categoriaExistente(valores.categoria, categorias);
+        if (!existente || existente === valores.categoria) return;
+        setValores((atual) => ({ ...atual, categoria: existente }));
+        if (existente !== valores.categoria.trim()) setDicaCategoria(`Usando a categoria já cadastrada "${existente}".`);
     };
 
     const focar = (campo) => escopo.current?.querySelector(`[name="${campo}"]`)?.focus();
@@ -89,7 +119,8 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
 
         const dados = {
             nome: valores.nome.trim(),
-            categoria: valores.categoria.trim(),
+            // também ao salvar com Enter, sem ter saído do campo
+            categoria: categoriaExistente(valores.categoria, categorias) ?? valores.categoria.trim(),
             quantidade: Number(valores.quantidade),
             preco: valor.toFixed(2),
         };
@@ -104,6 +135,8 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
                 onSaved(`"${dados.nome}" cadastrado com sucesso.`);
             }
         } catch (err) {
+            // Sessão expirada: a tela já vai para o login, e o rascunho fica guardado para reabrir depois
+            if (err.response?.status === 401) return;
             const mensagem = mensagemDeErro(err, 'Erro ao salvar produto.');
             // 409 = já existe um produto com esse nome: o erro é do campo Nome
             if (err.response?.status === 409) {
@@ -123,6 +156,13 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
                 {editando && <p>Item {formatarCodigo(produto.id)}</p>}
             </div>
 
+            {recuperado && (
+                <p className="form-message info" role="status">
+                    <History size={16} aria-hidden="true" />
+                    Recuperamos o que você estava preenchendo quando a sessão expirou. Confira e salve.
+                </p>
+            )}
+
             <Field
                 label="Nome"
                 name="nome"
@@ -136,10 +176,12 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
                 label="Categoria"
                 name="categoria"
                 value={valores.categoria}
-                onChange={(e) => alterar('categoria', e.target.value)}
+                onChange={(e) => { alterar('categoria', e.target.value); setDicaCategoria(''); }}
+                onBlur={ajustarCategoria}
                 maxLength={50}
                 list="categorias-existentes"
                 erro={erros.categoria}
+                dica={dicaCategoria}
             />
             <datalist id="categorias-existentes">
                 {categorias.map((c) => <option key={c} value={c} />)}
@@ -181,9 +223,9 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
     );
 }
 
-const ProductFormModal = ({ aberto, produto, onClose, onSaved, categorias = [] }) => (
-    <Modal aberto={aberto} onClose={onClose} titulo={produto ? 'Editar produto' : 'Novo produto'} largura={520}>
-        <ProductForm produto={produto} onClose={onClose} onSaved={onSaved} categorias={categorias} />
+const ProductFormModal = ({ aberto, produto, onClose, onSaved, categorias = [], rascunho = null, focoAoFechar }) => (
+    <Modal aberto={aberto} onClose={onClose} titulo={produto ? 'Editar produto' : 'Novo produto'} largura={520} focoAoFechar={focoAoFechar}>
+        <ProductForm produto={produto} onClose={onClose} onSaved={onSaved} categorias={categorias} rascunho={rascunho} />
     </Modal>
 );
 

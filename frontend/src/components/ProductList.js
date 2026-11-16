@@ -16,6 +16,8 @@ import ConfirmModal from './ConfirmModal';
 import ProductFormModal from './ProductFormModal';
 import useMediaQuery from '../utils/useMediaQuery';
 import useTituloDaPagina from '../utils/useTituloDaPagina';
+import { canonizarCategorias, normalizar } from '../utils/categorias';
+import { lerRascunho, limparRascunho } from '../utils/rascunho';
 import '../styles/dashboard.css';
 
 
@@ -31,8 +33,6 @@ const formatarValorEstoque = (v) => (v >= 100000 ? moedaCompacta.format(v) : moe
 const MAX_LINHAS = 4;
 // Acima disso o gráfico fica na faixa, ao lado dos indicadores; abaixo, depois da lista (mesmo corte do CSS)
 const TELA_LARGA = '(min-width: 1001px)';
-
-const normalizar = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 const COLUNAS = [
     { campo: 'id', rotulo: 'ID' },
@@ -74,6 +74,13 @@ const ProductList = () => {
     const [produtoEditado, setProdutoEditado] = useState(null);
     const [produtoExcluir, setProdutoExcluir] = useState(null);
     const [excluindo, setExcluindo] = useState(false);
+    // Valores do formulário recuperados depois que a sessão expirou com ele aberto
+    const [rascunho, setRascunho] = useState(null);
+    const restaurouRascunho = useRef(false);
+    // Linha que recebe o foco depois de uma exclusão (o botão que abriu o diálogo some com a linha)
+    const vizinhoAoExcluir = useRef(null);
+    const produtoEditadoRef = useRef(null);
+    produtoEditadoRef.current = produtoEditado;
     const buscaRef = useRef(null);
     const painelRef = useRef(null);
     const inventarioRef = useRef(null);
@@ -86,7 +93,8 @@ const ProductList = () => {
     const buscarProdutos = useCallback(async () => {
         try {
             const { data } = await instance.get('/produtos');
-            setProdutos(data.map((p) => ({ ...p, preco: Number(p.preco) })));
+            // variações de digitação da mesma categoria ("periféricos", "Perifericos") viram uma só
+            setProdutos(canonizarCategorias(data.map((p) => ({ ...p, preco: Number(p.preco) }))));
             setAtualizadoEm(new Date());
             setErroCarga(null);
         } catch (e) {
@@ -209,18 +217,59 @@ const ProductList = () => {
         setSomenteBaixo(false);
     };
 
-    const abrirNovo = () => { setProdutoEditado(null); setFormAberto(true); };
-    const abrirEdicao = useCallback((p) => { setProdutoEditado(p); setFormAberto(true); }, []);
-    const fecharForm = useCallback(() => setFormAberto(false), []);
+    const abrirNovo = () => { setRascunho(null); setProdutoEditado(null); setFormAberto(true); };
+    const abrirEdicao = useCallback((p) => { setRascunho(null); setProdutoEditado(p); setFormAberto(true); }, []);
+    // Fechar ou salvar descarta o rascunho; só a sessão expirada (que desmonta a tela) o mantém
+    const fecharForm = useCallback(() => { limparRascunho(); setFormAberto(false); }, []);
 
     const aoSalvar = (msg) => {
+        limparRascunho();
         setFormAberto(false);
         buscarProdutos();
         mostrarToast('sucesso', msg);
     };
 
+    // A sessão expirou com o formulário aberto: depois do novo login, reabre o que estava sendo preenchido
+    useEffect(() => {
+        if (restaurouRascunho.current || carregando || erroCarga || !usuario) return;
+        restaurouRascunho.current = true;
+        const salvo = lerRascunho();
+        if (!salvo) return;
+        limparRascunho();
+        if (salvo.usuario !== usuario.username) return; // de outra pessoa nesta aba: descarta
+        if (salvo.produtoId != null) {
+            const produto = produtos.find((p) => p.id === salvo.produtoId);
+            if (!produto) {
+                mostrarToast('erro', 'O produto que você estava editando não existe mais.');
+                return;
+            }
+            setProdutoEditado(produto);
+        } else {
+            setProdutoEditado(null);
+        }
+        setRascunho(salvo.valores);
+        setFormAberto(true);
+    }, [carregando, erroCarga, usuario, produtos, mostrarToast]);
+
+    // Depois de excluir, o foco vai para o "Excluir" da linha vizinha (ou para o título da lista, se ficou vazia):
+    // quem exclui vários itens em sequência continua no mesmo lugar, sem voltar ao topo da página.
+    const focoDepoisDeExcluir = useCallback(() => {
+        const id = vizinhoAoExcluir.current;
+        return (id != null && document.querySelector(`.row[data-id="${id}"] .icon-btn.danger`)) || inventarioRef.current;
+    }, []);
+
+    // Formulário aberto sem um botão de origem (reaberto pelo rascunho, ou no Safari, que não foca botões
+    // ao clicar): ao fechar, o foco vai para o "Editar" da linha ou para o "Novo produto".
+    const focoDepoisDoFormulario = useCallback(() => {
+        const id = produtoEditadoRef.current?.id;
+        return (id != null && document.querySelector(`.row[data-id="${id}"] .icon-btn:not(.danger)`))
+            || document.querySelector('.page-head .btn-primary');
+    }, []);
+
     const confirmarExclusao = async () => {
         const alvo = produtoExcluir;
+        const i = visiveis.findIndex((p) => p.id === alvo.id);
+        vizinhoAoExcluir.current = (visiveis[i + 1] ?? visiveis[i - 1])?.id ?? null;
         setExcluindo(true);
         try {
             await instance.delete(`/produtos/${alvo.id}`);
@@ -473,6 +522,8 @@ const ProductList = () => {
                 onClose={fecharForm}
                 onSaved={aoSalvar}
                 categorias={categorias}
+                rascunho={rascunho}
+                focoAoFechar={focoDepoisDoFormulario}
             />
             <ConfirmModal
                 aberto={!!produtoExcluir}
@@ -481,6 +532,7 @@ const ProductList = () => {
                 onConfirm={confirmarExclusao}
                 onCancel={() => setProdutoExcluir(null)}
                 carregando={excluindo}
+                focoAoFechar={focoDepoisDeExcluir}
             />
         </motion.div>
     );

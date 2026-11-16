@@ -22,7 +22,8 @@ const ProductRow = memo(({ produto: p, isAdmin, onEditar, onExcluir }) => {
     const preenchimento = p.quantidade === 0 ? 0 : Math.max(0.06, Math.min(1, p.quantidade / ESTOQUE_CHEIO));
 
     return (
-        <div role="row" className={`row ${nivel ? nivel.classe : ''}`}>
+        // data-id: depois de uma exclusão, o foco vai para a linha vizinha (ver ProductList)
+        <div role="row" className={`row ${nivel ? nivel.classe : ''}`} data-id={p.id}>
             <span role="cell" className="td td-id">{formatarCodigo(p.id)}</span>
             <span role="cell" className="td td-nome" title={p.nome}>{p.nome}</span>
             <span role="cell" className="td td-categoria" title={p.categoria}>{p.categoria}</span>

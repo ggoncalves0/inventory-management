@@ -1,18 +1,25 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { CircleAlert } from 'lucide-react';
+import { CircleAlert, Clock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { mensagemDeErro } from '../services/api';
 import Field from './Field';
 import Button from './Button';
 import useTituloDaPagina from '../utils/useTituloDaPagina';
+import { lerRascunho } from '../utils/rascunho';
 
 const LoginForm = () => {
-    const { login } = useAuth();
-    useTituloDaPagina('Entrar');
-    // Vindo do cadastro (quando o login automático falha), o usuário já chega preenchido
+    const { login, avisoSessao } = useAuth();
+    // O título da aba é o que o leitor de tela anuncia ao chegar aqui depois da expiração
+    useTituloDaPagina(avisoSessao ? 'Sessão expirada' : 'Entrar');
+    // Já chega preenchido vindo do cadastro (quando o login automático falha) ou da sessão expirada
     const { state } = useLocation();
-    const usuarioInicial = state?.username ?? '';
+    const usuarioInicial = state?.username ?? avisoSessao?.usuario ?? '';
+    // Havia um formulário aberto quando a sessão expirou: ele reabre depois do login
+    const [reabreFormulario] = useState(() => {
+        const r = lerRascunho();
+        return !!r && !!avisoSessao?.usuario && r.usuario === avisoSessao.usuario;
+    });
     const [username, setUsername] = useState(usuarioInicial);
     const [senha, setSenha] = useState('');
     const [erro, setErro] = useState('');
@@ -43,6 +50,15 @@ const LoginForm = () => {
         <form className="auth-form" onSubmit={handleLogin} noValidate>
             <h1>Entrar</h1>
             <p className="auth-sub">Use seu usuário e senha para acessar o estoque.</p>
+
+            {avisoSessao && (
+                <p className="form-message info" role="status">
+                    <Clock size={16} aria-hidden="true" />
+                    {reabreFormulario
+                        ? 'Sua sessão expirou. Entre de novo: o formulário que você estava preenchendo será reaberto.'
+                        : 'Sua sessão expirou. Entre de novo para continuar.'}
+                </p>
+            )}
 
             <Field
                 label="Usuário"

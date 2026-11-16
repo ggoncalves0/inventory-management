@@ -29,10 +29,12 @@ app = Flask(__name__)
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 # O token vai no header Authorization, então não precisamos de cookies cross-origin.
+# X-Novo-Token (sessão deslizante, ver app.py) precisa ser exposto para o frontend conseguir lê-lo.
 CORS(
     app,
     resources={r"/*": {"origins": [FRONTEND_URL]}},
     allow_headers=['Content-Type', 'Authorization'],
+    expose_headers=['X-Novo-Token'],
     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     max_age=600,
 )
@@ -45,6 +47,9 @@ app.config['MYSQL_CHARSET'] = 'utf8mb4'
 
 app.config['JWT_SECRET_KEY'] = _carregar_jwt_secret()
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=int(os.getenv('JWT_EXPIRES_HOURS', '2')))
+# Teto da sessão deslizante: quem está usando o app tem o token renovado (app.py), mas nenhuma sessão
+# passa disso desde o login. Assim um token vazado não pode ser renovado para sempre.
+app.config['JWT_SESSAO_MAXIMA'] = timedelta(hours=int(os.getenv('JWT_SESSAO_MAX_HORAS', '12')))
 app.config['JWT_TOKEN_LOCATION'] = ['headers']
 
 # Nenhuma rota precisa de payloads grandes; corta abuso logo na entrada.

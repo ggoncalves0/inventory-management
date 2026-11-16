@@ -1,23 +1,33 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { X } from 'lucide-react';
 
 const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])';
 
-function ModalConteudo({ onClose, titulo, children, largura }) {
+// `focoAoFechar`: função que devolve para onde o foco vai se quem abriu o diálogo não existe mais
+// (ex.: o botão "Excluir" some junto com a linha excluída).
+function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar }) {
     const caixaRef = useRef(null);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;
+    const focoAoFecharRef = useRef(focoAoFechar);
+    focoAoFecharRef.current = focoAoFechar;
+    // Quem tinha o foco antes de abrir. Lido durante a renderização (inicializador do useState), antes do
+    // autoFocus dos campos: lido num efeito, já seria o próprio campo do formulário — e o foco se perdia ao fechar.
+    const [origem] = useState(() => document.activeElement);
 
     useEffect(() => {
-        const focoAnterior = document.activeElement;
         const overflowAnterior = document.body.style.overflow;
         document.body.style.overflow = 'hidden';
 
+        // Foco inicial: se um campo já pegou o foco (autoFocus), fica nele; senão o marcado com
+        // data-foco-inicial (ex.: "Cancelar" na confirmação de exclusão), o 1º campo ou o 1º controle.
         const caixa = caixaRef.current;
-        const primeiro = caixa?.querySelector('[autofocus], input') || caixa?.querySelector(FOCAVEIS);
-        primeiro?.focus();
+        if (caixa && !caixa.contains(document.activeElement)) {
+            const inicial = caixa.querySelector('[data-foco-inicial]') || caixa.querySelector('input') || caixa.querySelector(FOCAVEIS);
+            inicial?.focus();
+        }
 
         const aoTeclar = (e) => {
             if (e.key === 'Escape') {
@@ -43,9 +53,11 @@ function ModalConteudo({ onClose, titulo, children, largura }) {
         return () => {
             document.removeEventListener('keydown', aoTeclar);
             document.body.style.overflow = overflowAnterior;
-            focoAnterior?.focus?.();
+            // Devolve o foco a quem abriu; se ele saiu da página, ao destino alternativo
+            const destino = origem?.isConnected && origem !== document.body ? origem : focoAoFecharRef.current?.();
+            destino?.focus?.();
         };
-    }, []);
+    }, [origem]);
 
     return (
         <motion.div

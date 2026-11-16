@@ -22,14 +22,26 @@ instance.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
+// Sessão deslizante: quando o token passa da metade da validade, o backend devolve um novo no header
+// X-Novo-Token. Só troca se ainda há sessão: uma resposta atrasada não pode "relogar" quem acabou de sair.
+function guardarTokenRenovado(resposta) {
+  const novo = resposta?.headers?.['x-novo-token'];
+  if (novo && localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, novo);
+}
+
 // Token expirado ou inválido: avisa o AuthContext para encerrar a sessão.
 instance.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    guardarTokenRenovado(response);
+    return response;
+  },
   (error) => {
     const url = error.config?.url || '';
     if (error.response?.status === 401 && !url.endsWith('/login')) {
       localStorage.removeItem(TOKEN_KEY);
       window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+    } else {
+      guardarTokenRenovado(error.response);
     }
     return Promise.reject(error);
   }
