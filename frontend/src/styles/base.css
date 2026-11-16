@@ -197,11 +197,6 @@ kbd {
   --padrao-caixas: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='69.28' height='120' viewBox='0 0 69.28 120'%3E%3Cpath d='M0 -40 L34.64 -20 L0 0 L-34.64 -20Z M69.28 -40 L103.92 -20 L69.28 0 L34.64 -20Z M0 80 L34.64 100 L0 120 L-34.64 100Z M69.28 80 L103.92 100 L69.28 120 L34.64 100Z M34.64 20 L69.28 40 L34.64 60 L0 40Z' fill='white' fill-opacity='0.035'/%3E%3Cpath d='M0 -40 L34.64 -20 L34.64 20 L0 40 L-34.64 20 L-34.64 -20Z M69.28 -40 L103.92 -20 L103.92 20 L69.28 40 L34.64 20 L34.64 -20Z M0 80 L34.64 100 L34.64 140 L0 160 L-34.64 140 L-34.64 100Z M69.28 80 L103.92 100 L103.92 140 L69.28 160 L34.64 140 L34.64 100Z M34.64 20 L69.28 40 L69.28 80 L34.64 100 L0 80 L0 40Z M0 0 L34.64 -20 M0 0 L-34.64 -20 M0 0 L0 40 M69.28 0 L103.92 -20 M69.28 0 L34.64 -20 M69.28 0 L69.28 40 M0 120 L34.64 100 M0 120 L-34.64 100 M0 120 L0 160 M69.28 120 L103.92 100 M69.28 120 L34.64 100 M69.28 120 L69.28 160 M34.64 60 L69.28 40 M34.64 60 L0 40 M34.64 60 L34.64 100' fill='none' stroke='white' stroke-opacity='0.1' stroke-width='1'/%3E%3C/svg%3E");
 }
 
-/* Fita de sinalização zebrada */
-.fita {
-  background: repeating-linear-gradient(-45deg, var(--accent) 0 10px, var(--brand) 10px 20px);
-}
-
 /* Cantoneiras laranja: marcas de canto, como em chapa de identificação */
 .cantoneiras {
   --canto: var(--accent);

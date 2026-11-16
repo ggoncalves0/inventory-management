@@ -6,8 +6,7 @@ import Button from './Button';
 import Logo from './Logo';
 import useTituloDaPagina from '../utils/useTituloDaPagina';
 
-// Segundos entre as tentativas automáticas
-const INTERVALO = 10;
+const SEGUNDOS_ENTRE_TENTATIVAS = 10;
 
 // O servidor não respondeu ao abrir o app (fora do ar, reiniciando, sem rede). A sessão continua:
 // o token fica guardado, o app tenta de novo sozinho e entra assim que o servidor responder.
@@ -15,10 +14,10 @@ const SemConexao = () => {
     const { erroConexao, verificando, tentarDeNovo, logout } = useAuth();
     useTituloDaPagina('Sem conexão');
 
-    // Nova tentativa automática a cada INTERVALO segundos (o timer recomeça depois de cada tentativa)
+    // O timer recomeça depois de cada tentativa, não a cada render
     useEffect(() => {
         if (verificando) return undefined;
-        const timer = setTimeout(tentarDeNovo, INTERVALO * 1000);
+        const timer = setTimeout(tentarDeNovo, SEGUNDOS_ENTRE_TENTATIVAS * 1000);
         return () => clearTimeout(timer);
     }, [verificando, tentarDeNovo]);
 
@@ -29,7 +28,7 @@ const SemConexao = () => {
                 <CloudOff size={28} aria-hidden="true" />
                 <h1 id="titulo-sem-conexao">Sem conexão com o servidor</h1>
                 <p>
-                    {erroConexao} Sua sessão continua aberta: o app tenta de novo a cada {INTERVALO} segundos
+                    {erroConexao} Sua sessão continua aberta: o app tenta de novo a cada {SEGUNDOS_ENTRE_TENTATIVAS} segundos
                     e entra sozinho assim que o servidor responder.
                 </p>
                 <p className="sem-conexao-status" role="status">{verificando ? 'Tentando conectar…' : ''}</p>

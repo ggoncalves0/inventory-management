@@ -160,7 +160,7 @@ A checagem que vale de verdade é a do backend (`admin_required` em `backend/sec
 
 - Senhas com hash `bcrypt`; mínimo de 8 caracteres e usuário restrito a `[A-Za-z0-9_.-]` (3–50).
 - Login com tempo de resposta constante (não revela se o usuário existe) e **rate limit** por IP no login (10 / 5 min) e registro (5 / 10 min).
-- JWT com expiração (`JWT_EXPIRES_HOURS`, padrão 2h); ao expirar, o frontend encerra a sessão sozinho.
+- JWT com expiração (`JWT_EXPIRES_HOURS`, padrão 2h) renovada a cada requisição enquanto a pessoa usa o app, até o teto de `JWT_SESSAO_MAX_HORAS` (padrão 12h) desde o login; ao expirar, o frontend volta para o login avisando o motivo.
 - Todas as rotas de produtos exigem autenticação; criar/editar/excluir exige administrador.
 - Validação rigorosa de entrada (tamanhos, inteiros, decimais finitos, sem `NaN`/`Infinity`), consultas sempre parametrizadas e `LIKE` com curingas escapados.
 - CORS restrito ao `FRONTEND_URL`, limite de 16 KB por requisição, headers de segurança (`nosniff`, `X-Frame-Options`, CSP, `no-store`) e erros em JSON sem stack trace.

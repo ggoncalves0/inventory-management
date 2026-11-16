@@ -3,9 +3,8 @@ import instance, { mensagemDeErro } from '../services/api';
 import Modal from './Modal';
 import Field from './Field';
 import Button from './Button';
-import { formatarCodigo } from '../utils/formatos';
+import { formatarCodigo, inteiro } from '../utils/formatos';
 
-const inteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 // Mesmo limite do backend (validators.py)
 const QUANTIDADE_MAX = 2147483647;
 
@@ -22,18 +21,17 @@ function AjusteForm({ produto: produtoInicial, onClose, onAjustado }) {
     const n = Number(quantidade);
     const informado = quantidade !== '' && n > 0;
     const resultado = tipo === 'entrada' ? produto.quantidade + n : produto.quantidade - n;
-    // Avisado enquanto digita, antes de tentar salvar
     let problema = '';
     if (informado && tipo === 'saida' && n > produto.quantidade) {
         problema = `Não há estoque suficiente: saem no máximo ${inteiro.format(produto.quantidade)}.`;
     } else if (informado && resultado > QUANTIDADE_MAX) {
-        problema = 'Quantidade acima do permitido.';
+        problema = `O estoque passaria do máximo permitido (${inteiro.format(QUANTIDADE_MAX)} un.).`;
     }
 
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!informado) {
-            setErro('Informe quantas unidades.');
+            setErro('Informe uma quantidade maior que zero.');
             campoRef.current?.focus();
             return;
         }
@@ -105,7 +103,6 @@ function AjusteForm({ produto: produtoInicial, onClose, onAjustado }) {
                 data-foco-inicial
             />
 
-            {/* prévia do resultado, anunciada enquanto digita */}
             <p className="ajuste-previa" aria-live="polite" aria-atomic="true">
                 Estoque: <strong>{inteiro.format(produto.quantidade)}</strong>
                 <span aria-hidden="true"> → </span>

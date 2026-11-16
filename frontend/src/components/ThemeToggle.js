@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { Monitor, Moon, Sun } from 'lucide-react';
 
 const CHAVE = 'tema';
-// Ordem do ciclo a cada clique
-const TEMAS = ['sistema', 'light', 'dark'];
+const TEMAS_EM_CICLO = ['sistema', 'light', 'dark'];
 const INFO = {
     sistema: { icone: Monitor, nome: 'do sistema' },
     light: { icone: Sun, nome: 'claro' },
@@ -13,7 +12,7 @@ const INFO = {
 function lerTema() {
     try {
         const salvo = localStorage.getItem(CHAVE);
-        return TEMAS.includes(salvo) ? salvo : 'sistema';
+        return TEMAS_EM_CICLO.includes(salvo) ? salvo : 'sistema';
     } catch {
         return 'sistema';
     }
@@ -28,7 +27,7 @@ export function aplicarTema(tema = lerTema()) {
 
 const ThemeToggle = ({ className = '' }) => {
     const [tema, setTema] = useState(lerTema);
-    const proximo = TEMAS[(TEMAS.indexOf(tema) + 1) % TEMAS.length];
+    const proximo = TEMAS_EM_CICLO[(TEMAS_EM_CICLO.indexOf(tema) + 1) % TEMAS_EM_CICLO.length];
     const { icone: Icone, nome } = INFO[tema];
 
     const trocar = () => {

@@ -1,9 +1,6 @@
 import { memo } from 'react';
 import { Diff, Pencil, Trash2 } from 'lucide-react';
-import { formatarCodigo } from '../utils/formatos';
-
-const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const inteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
+import { formatarCodigo, inteiro, moeda } from '../utils/formatos';
 
 const ESTOQUE_BAIXO = 5;
 // A barra usa uma escala fixa (e não o maior item da lista): o tamanho não muda quando outro produto muda.

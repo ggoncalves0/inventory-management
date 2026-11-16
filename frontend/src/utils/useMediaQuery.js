@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
 
-// true enquanto a media query casar; acompanha redimensionamentos da janela.
 // Usado quando o mesmo bloco muda de container conforme a largura (CSS sozinho não move elementos entre containers).
 export default function useMediaQuery(consulta) {
     const [casa, setCasa] = useState(() => window.matchMedia(consulta).matches);

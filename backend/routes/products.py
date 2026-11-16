@@ -62,7 +62,8 @@ def listar_produtos():
     params = []
 
     if id:
-        if not id.isdigit():
+        # isdecimal, não isdigit: '²'.isdigit() é True e int('²') estoura em 500
+        if not id.isdecimal():
             return jsonify([])
         filtros += " AND id = %s"
         params.append(int(id))
@@ -74,13 +75,15 @@ def listar_produtos():
         params.append(f"%{escapar_like(categoria[:50])}%")
 
     cur = mysql.connection.cursor()
-    # Total real com os mesmos filtros, sem o LIMIT: a tela avisa quando a lista foi cortada,
-    # em vez de somar só os primeiros LIMITE_LISTAGEM achando que é o estoque todo.
-    cur.execute(f"SELECT COUNT(*) FROM produtos{filtros}", tuple(params))
-    total = cur.fetchone()[0]
-    cur.execute(f"SELECT {COLUNAS} FROM produtos{filtros} ORDER BY id LIMIT %s", (*params, LIMITE_LISTAGEM))
-    produtos = cur.fetchall()
-    cur.close()
+    try:
+        # Total real com os mesmos filtros, sem o LIMIT: a tela avisa quando a lista foi cortada,
+        # em vez de somar só os primeiros LIMITE_LISTAGEM achando que é o estoque todo.
+        cur.execute(f"SELECT COUNT(*) FROM produtos{filtros}", tuple(params))
+        total = cur.fetchone()[0]
+        cur.execute(f"SELECT {COLUNAS} FROM produtos{filtros} ORDER BY id LIMIT %s", (*params, LIMITE_LISTAGEM))
+        produtos = cur.fetchall()
+    finally:
+        cur.close()
 
     resposta = jsonify([_serializar(p) for p in produtos])
     resposta.headers['X-Total-Count'] = str(total)
@@ -91,9 +94,11 @@ def listar_produtos():
 @jwt_required()
 def busca_produto(id):
     cur = mysql.connection.cursor()
-    cur.execute(f"SELECT {COLUNAS} FROM produtos WHERE id = %s", (id,))
-    produto = cur.fetchone()
-    cur.close()
+    try:
+        cur.execute(f"SELECT {COLUNAS} FROM produtos WHERE id = %s", (id,))
+        produto = cur.fetchone()
+    finally:
+        cur.close()
     if produto:
         return jsonify(_serializar(produto))
     return jsonify({"erro": "Produto não encontrado"}), 404
@@ -133,10 +138,12 @@ def atualizar_produto(id):
 @admin_required
 def deletar_produto(id):
     cur = mysql.connection.cursor()
-    cur.execute("DELETE FROM produtos WHERE id = %s", (id,))
-    removidos = cur.rowcount
-    mysql.connection.commit()
-    cur.close()
+    try:
+        cur.execute("DELETE FROM produtos WHERE id = %s", (id,))
+        removidos = cur.rowcount
+        mysql.connection.commit()
+    finally:
+        cur.close()
 
     if not removidos:
         return jsonify({"erro": "Produto não encontrado ou já foi removido"}), 404

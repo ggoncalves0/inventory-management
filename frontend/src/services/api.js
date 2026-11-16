@@ -29,7 +29,7 @@ function guardarTokenRenovado(resposta) {
   if (novo && localStorage.getItem(TOKEN_KEY)) localStorage.setItem(TOKEN_KEY, novo);
 }
 
-// Token expirado ou inválido: avisa o AuthContext para encerrar a sessão.
+// 401 no /login é usuário ou senha errados, não sessão expirada: não encerra nada.
 instance.interceptors.response.use(
   (response) => {
     guardarTokenRenovado(response);

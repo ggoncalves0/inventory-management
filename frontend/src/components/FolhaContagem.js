@@ -1,6 +1,5 @@
-import { formatarCodigo } from '../utils/formatos';
+import { formatarCodigo, inteiro } from '../utils/formatos';
 
-const inteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 const dataHora = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
 
 // Folha de contagem física: o que vai para o papel ao imprimir a tela de produtos (ver ProductList e

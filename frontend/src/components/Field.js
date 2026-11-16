@@ -1,8 +1,6 @@
 import { useId, useState } from 'react';
 import { CircleAlert, Eye, EyeOff, TriangleAlert } from 'lucide-react';
 
-// Campo com rótulo acima, botão de mostrar/ocultar senha, mensagem de erro própria e uma dica
-// opcional (as duas ligadas ao input por aria-describedby). Com erro, a dica não aparece.
 // `dicaTipo`: 'neutra' (padrão) ou 'aviso' (ex.: o campo mudou no servidor enquanto a sessão estava expirada).
 const Field = ({ label, type = 'text', invalido = false, erro, dica, dicaTipo = 'neutra', className = '', 'aria-describedby': descricao, ...props }) => {
     const id = useId();

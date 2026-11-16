@@ -1,6 +1,5 @@
 import { ArrowRight, X } from 'lucide-react';
 
-// Só o indicador com onClick é clicável (vira <button>); os demais são informativos.
 // Dentro de <button> só cabe conteúdo de frase, por isso spans no lugar de divs.
 const StatCard = ({ rotulo, valor, detalhe, titulo, alerta = false, onClick, ativo = false, acao }) => {
     const interativo = !!onClick;

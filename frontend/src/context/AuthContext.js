@@ -26,7 +26,6 @@ function gravarAviso(aviso) {
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => localStorage.getItem(TOKEN_KEY));
   const [usuario, setUsuario] = useState(null);
-  const [carregando, setCarregando] = useState(!!token);
   const [avisoSessao, setAvisoSessao] = useState(lerAviso);
   // Servidor fora do ar, reiniciando ou sem rede ao abrir o app: a sessão continua, só falta conexão
   const [erroConexao, setErroConexao] = useState(null);
@@ -48,12 +47,8 @@ export function AuthProvider({ children }) {
   // — servidor fora do ar, reiniciando, 5xx, sem rede — mantém o token e vira "sem conexão",
   // com nova tentativa; antes, uma queda rápida do servidor deslogava todo mundo em silêncio.
   useEffect(() => {
-    if (!token) {
-      setCarregando(false);
-      return;
-    }
+    if (!token) return undefined;
     let ativo = true;
-    setCarregando(true);
     setVerificando(true);
     instance.get('/me')
       .then(({ data }) => {
@@ -68,7 +63,6 @@ export function AuthProvider({ children }) {
       })
       .finally(() => {
         if (!ativo) return;
-        setCarregando(false);
         setVerificando(false);
       });
     return () => { ativo = false; };
@@ -99,11 +93,11 @@ export function AuthProvider({ children }) {
 
   const valor = useMemo(
     () => ({
-      token, usuario, carregando, login, logout, avisoSessao,
+      token, usuario, login, logout, avisoSessao,
       erroConexao, verificando, tentarDeNovo,
       isAdmin: !!usuario?.is_admin,
     }),
-    [token, usuario, carregando, login, logout, avisoSessao, erroConexao, verificando, tentarDeNovo]
+    [token, usuario, login, logout, avisoSessao, erroConexao, verificando, tentarDeNovo]
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

@@ -1,7 +1,7 @@
 import os
 from datetime import datetime, timezone
 
-from flask import jsonify
+from flask import jsonify, request
 from flask_jwt_extended import create_access_token, get_jwt
 from werkzeug.exceptions import HTTPException
 
@@ -58,7 +58,6 @@ def renovar_sessao(resposta):
     return resposta
 
 
-# ---------- Erros do JWT em JSON e em português ----------
 @jwt.unauthorized_loader
 def _sem_token(_motivo):
     return jsonify({"erro": "Autenticação necessária"}), 401
@@ -74,7 +73,7 @@ def _token_expirado(_header, _payload):
     return jsonify({"erro": "Sessão expirada, faça login novamente"}), 401
 
 
-# ---------- Erros genéricos (sem vazar stack trace) ----------
+# Erros sempre em JSON e sem stack trace: o detalhe fica só no log do servidor.
 MENSAGENS_HTTP = {
     400: "Requisição inválida",
     404: "Rota não encontrada",
@@ -90,7 +89,7 @@ def _erro_http(e):
 
 @app.errorhandler(Exception)
 def _erro_interno(e):
-    app.logger.exception(e)
+    app.logger.exception('Erro não tratado em %s %s', request.method, request.path)
     return jsonify({"erro": "Erro interno do servidor"}), 500
 
 

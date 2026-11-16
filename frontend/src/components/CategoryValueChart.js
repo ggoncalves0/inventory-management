@@ -1,7 +1,5 @@
-const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-// Total: mesmo formato do indicador "Valor em estoque" (R$ 1,26 mi)
-const moedaTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 2 });
-const formatarTotal = (v) => (v >= 100000 ? moedaTotal.format(v) : moeda.format(v));
+import { formatarValorEstoque, moeda } from '../utils/formatos';
+
 // Linhas: todas no mesmo formato curto (R$ 1,06 mi · R$ 28,3 mil); o valor exato vai no title
 const moedaCurta = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumSignificantDigits: 3 });
 const porcento = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 });
@@ -14,7 +12,6 @@ const LINHAS_ESQUELETO = 5;
 // Com dados desiguais (uma categoria com 84%) cada categoria continua legível — numa barra única
 // as menores viravam tiras impossíveis de comparar.
 // `linhas`: [{ nome, valor, membros? }] em ordem decrescente; "Outras" tem `membros` e não filtra.
-// `numero`: número da seção ("01"), decorativo — escondido do leitor de tela.
 const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar, carregando = false, numero }) => {
     if (!carregando && !total) return null;
 
@@ -39,14 +36,13 @@ const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar, carre
         );
     }
 
-    // a maior barra ocupa a trilha inteira; as outras são proporcionais a ela
     const maior = Math.max(...linhas.map((l) => l.valor));
 
     return (
         <section className="chart-card cantoneiras" aria-labelledby="titulo-valor-categoria">
             <div className="chart-head">
                 {titulo}
-                <span className="chart-total" title={moeda.format(total)}>Total {formatarTotal(total)}</span>
+                <span className="chart-total" title={moeda.format(total)}>Total {formatarValorEstoque(total)}</span>
             </div>
 
             <ul className="cat-lista">

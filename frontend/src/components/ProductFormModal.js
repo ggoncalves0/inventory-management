@@ -287,7 +287,7 @@ const ProductFormModal = ({ aberto, produto, onClose, onSaved, categorias = [], 
         titulo={produto ? 'Editar produto' : 'Novo produto'}
         largura={520}
         focoAoFechar={focoAoFechar}
-        descricao={rascunho ? 'aviso-rascunho' : undefined}
+        idDescricao={rascunho ? 'aviso-rascunho' : undefined}
     >
         <ProductForm produto={produto} onClose={onClose} onSaved={onSaved} categorias={categorias} rascunho={rascunho} />
     </Modal>

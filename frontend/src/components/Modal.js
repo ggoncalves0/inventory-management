@@ -5,10 +5,22 @@ import { X } from 'lucide-react';
 
 const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select, textarea, [href], [tabindex]:not([tabindex="-1"])';
 
+function prenderTabNoDialogo(e, caixa) {
+    const itens = [...caixa.querySelectorAll(FOCAVEIS)];
+    if (!itens.length) return;
+    const [inicio, fim] = [itens[0], itens[itens.length - 1]];
+    if (e.shiftKey && document.activeElement === inicio) {
+        e.preventDefault();
+        fim.focus();
+    } else if (!e.shiftKey && document.activeElement === fim) {
+        e.preventDefault();
+        inicio.focus();
+    }
+}
+
 // `focoAoFechar`: função que devolve para onde o foco vai se quem abriu o diálogo não existe mais
 // (ex.: o botão "Excluir" some junto com a linha excluída).
-// `descricao`: id de um texto dentro do diálogo lido junto com o título ao abrir (aria-describedby).
-function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar, descricao }) {
+function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar, idDescricao }) {
     const caixaRef = useRef(null);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;
@@ -35,26 +47,13 @@ function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar, descr
                 onCloseRef.current();
                 return;
             }
-            // Mantém o foco do teclado preso dentro do modal
-            if (e.key === 'Tab' && caixa) {
-                const itens = [...caixa.querySelectorAll(FOCAVEIS)];
-                if (!itens.length) return;
-                const [inicio, fim] = [itens[0], itens[itens.length - 1]];
-                if (e.shiftKey && document.activeElement === inicio) {
-                    e.preventDefault();
-                    fim.focus();
-                } else if (!e.shiftKey && document.activeElement === fim) {
-                    e.preventDefault();
-                    inicio.focus();
-                }
-            }
+            if (e.key === 'Tab' && caixa) prenderTabNoDialogo(e, caixa);
         };
         document.addEventListener('keydown', aoTeclar);
 
         return () => {
             document.removeEventListener('keydown', aoTeclar);
             document.body.style.overflow = overflowAnterior;
-            // Devolve o foco a quem abriu; se ele saiu da página, ao destino alternativo
             const destino = origem?.isConnected && origem !== document.body ? origem : focoAoFecharRef.current?.();
             destino?.focus?.();
         };
@@ -74,7 +73,7 @@ function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar, descr
                 role="dialog"
                 aria-modal="true"
                 aria-label={titulo}
-                aria-describedby={descricao}
+                aria-describedby={idDescricao}
                 className="modal-box"
                 style={{ maxWidth: largura }}
                 initial={{ opacity: 0, scale: 0.98 }}
