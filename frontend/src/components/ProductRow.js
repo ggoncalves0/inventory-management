@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Pencil, Trash2 } from 'lucide-react';
+import { formatarCodigo } from '../utils/formatos';
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 const inteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
@@ -22,7 +23,7 @@ const ProductRow = memo(({ produto: p, isAdmin, onEditar, onExcluir }) => {
 
     return (
         <div role="row" className={`row ${nivel ? nivel.classe : ''}`}>
-            <span role="cell" className="td td-id">#{String(p.id).padStart(4, '0')}</span>
+            <span role="cell" className="td td-id">{formatarCodigo(p.id)}</span>
             <span role="cell" className="td td-nome" title={p.nome}>{p.nome}</span>
             <span role="cell" className="td td-categoria" title={p.categoria}>{p.categoria}</span>
             <span role="cell" className="td td-quantidade">

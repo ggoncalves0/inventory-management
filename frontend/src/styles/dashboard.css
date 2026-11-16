@@ -275,11 +275,8 @@ button.stat-card:focus-visible {
 }
 
 .chart-total {
-  font-family: var(--font-display);
-  font-size: 1.375rem;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--text);
+  font-size: 0.8125rem;
+  color: var(--text-muted);
   font-variant-numeric: tabular-nums;
 }
 
@@ -479,6 +476,40 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   pointer-events: none;
 }
 
+/* Aviso: a atualização falhou, a lista mostra os dados da última carga boa */
+.aviso-carga {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.45rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--warning-text) 35%, transparent);
+  background: var(--warning-subtle);
+  font-size: 0.8125rem;
+}
+
+.aviso-carga svg {
+  flex-shrink: 0;
+  color: var(--warning-text);
+}
+
+.aviso-carga button {
+  margin-left: auto;
+  flex-shrink: 0;
+  padding: 0.15rem 0.3rem;
+  border: none;
+  background: none;
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+/* Indicadores sem dados confiáveis: travessão em cinza, não zero */
+.stats-grid.pendente .stat-value {
+  color: var(--text-faint);
+}
+
 /* Aviso do filtro ligado pelo indicador "Estoque baixo" (que pode estar fora da tela) */
 .filtro-ativo {
   display: flex;
@@ -589,7 +620,6 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
 
 .table-body {
   position: relative;
-  min-height: 120px;
 }
 
 .row {
@@ -763,6 +793,15 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
 .empty-state > svg {
   margin-bottom: 0.5rem;
   color: var(--text-faint);
+}
+
+/* falha de carga: ícone em vermelho, texto mais largo para caber o detalhe do servidor */
+.empty-state.erro-carga > svg {
+  color: var(--danger-text);
+}
+
+.empty-state.erro-carga p {
+  max-width: 46ch;
 }
 
 .empty-state p {

@@ -20,7 +20,7 @@ const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar }) => 
         <section className="chart-card cantoneiras" aria-labelledby="titulo-valor-categoria">
             <div className="chart-head">
                 <h2 className="secao" id="titulo-valor-categoria"><span className="secao-num">02</span>Valor por categoria</h2>
-                <span className="chart-total" title={moeda.format(total)}>{formatarTotal(total)}</span>
+                <span className="chart-total" title={moeda.format(total)}>Total {formatarTotal(total)}</span>
             </div>
 
             <ul className="cat-lista">

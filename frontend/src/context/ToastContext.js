@@ -60,7 +60,10 @@ export function ToastProvider({ children }) {
 
   const mostrarToast = useCallback((tipo, texto) => {
     const id = ++proximoId.current;
-    setToasts((atual) => [...atual.slice(-3), { id, tipo, texto }]);
+    // Mesmo tipo e texto já na tela: não empilha uma cópia (ex.: duas requisições falhando juntas)
+    setToasts((atual) => (atual.some((t) => t.tipo === tipo && t.texto === texto)
+      ? atual
+      : [...atual.slice(-3), { id, tipo, texto }]));
   }, []);
 
   // Sem toasts, não há onde o mouse estar: evita ficar "pausado" para sempre

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import {
-    ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, PackageOpen, Plus, RefreshCw, Search, X
+    ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, CircleAlert, PackageOpen, Plus, RefreshCw, Search, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -59,6 +59,8 @@ const ProductList = () => {
     const [carregando, setCarregando] = useState(true);
     const [atualizando, setAtualizando] = useState(false);
     const [atualizadoEm, setAtualizadoEm] = useState(null);
+    // Falha na última carga (mensagem para a tela). Não vira toast: a própria lista mostra o erro.
+    const [erroCarga, setErroCarga] = useState(null);
     const [busca, setBusca] = useState('');
     const [categoriaAtiva, setCategoriaAtiva] = useState('Todas');
     const [somenteBaixo, setSomenteBaixo] = useState(false);
@@ -78,12 +80,14 @@ const ProductList = () => {
             const { data } = await instance.get('/produtos');
             setProdutos(data.map((p) => ({ ...p, preco: Number(p.preco) })));
             setAtualizadoEm(new Date());
+            setErroCarga(null);
         } catch (e) {
-            if (e.response?.status !== 401) mostrarToast('erro', mensagemDeErro(e, 'Erro ao carregar produtos.'));
+            // 401 já leva de volta ao login (interceptor); o resto aparece na própria lista
+            if (e.response?.status !== 401) setErroCarga(mensagemDeErro(e, 'Erro desconhecido.'));
         } finally {
             setCarregando(false);
         }
-    }, [mostrarToast]);
+    }, []);
 
     useEffect(() => { buscarProdutos(); }, [buscarProdutos]);
 
@@ -127,7 +131,9 @@ const ProductList = () => {
     const linhasValor = useMemo(() => {
         const valores = new Map();
         produtos.forEach((p) => valores.set(p.categoria, (valores.get(p.categoria) || 0) + p.quantidade * p.preco));
-        const ordenadas = [...valores].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
+        const ordenadas = [...valores]
+            .filter(([, v]) => v > 0)
+            .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
         const limite = ordenadas.length === MAX_LINHAS + 1 ? ordenadas.length : MAX_LINHAS;
         const lista = ordenadas.slice(0, limite).map(([nome, valor]) => ({ nome, valor }));
         const resto = ordenadas.slice(limite);
@@ -215,6 +221,10 @@ const ProductList = () => {
     };
 
     const filtroAtivo = busca || categoriaAtiva !== 'Todas' || somenteBaixo;
+    // Sem dados confiáveis (carregando, ou a primeira carga falhou): os indicadores mostram "—", não zero
+    const semDados = carregando || (erroCarga && produtos.length === 0);
+    const falhouSemDados = !carregando && erroCarga && produtos.length === 0;
+    const PENDENTE = '—';
 
     const { baixo, esgotados } = estatisticas;
     let detalheBaixo = `até ${ESTOQUE_BAIXO} unidades`;
@@ -256,18 +266,19 @@ const ProductList = () => {
                 </section>
 
                 <h2 className="secao" id="secao-resumo"><span className="secao-num">01</span>Resumo</h2>
-                <section className="stats-grid" aria-labelledby="secao-resumo">
-                    <StatCard rotulo="Produtos" valor={inteiro.format(estatisticas.total)}
-                        detalhe={`${categorias.length} ${categorias.length === 1 ? 'categoria' : 'categorias'}`} />
-                    <StatCard rotulo="Unidades" valor={inteiro.format(estatisticas.unidades)} />
-                    <StatCard rotulo="Valor em estoque" valor={formatarValorEstoque(estatisticas.valor)}
-                        titulo={moeda.format(estatisticas.valor)} detalhe="quantidade × preço" />
-                    <StatCard rotulo="Estoque baixo" valor={inteiro.format(baixo)}
-                        detalhe={detalheBaixo}
-                        alerta={baixo > 0}
-                        onClick={baixo > 0 ? alternarSomenteBaixo : undefined}
+                <section className={`stats-grid ${semDados ? 'pendente' : ''}`} aria-labelledby="secao-resumo" aria-busy={carregando || undefined}>
+                    <StatCard rotulo="Produtos" valor={semDados ? PENDENTE : inteiro.format(estatisticas.total)}
+                        detalhe={semDados ? undefined : `${categorias.length} ${categorias.length === 1 ? 'categoria' : 'categorias'}`} />
+                    <StatCard rotulo="Unidades" valor={semDados ? PENDENTE : inteiro.format(estatisticas.unidades)} />
+                    <StatCard rotulo="Valor em estoque" valor={semDados ? PENDENTE : formatarValorEstoque(estatisticas.valor)}
+                        titulo={semDados ? undefined : moeda.format(estatisticas.valor)}
+                        detalhe={semDados ? undefined : 'quantidade × preço'} />
+                    <StatCard rotulo="Estoque baixo" valor={semDados ? PENDENTE : inteiro.format(baixo)}
+                        detalhe={semDados ? undefined : detalheBaixo}
+                        alerta={!semDados && baixo > 0}
+                        onClick={!semDados && baixo > 0 ? alternarSomenteBaixo : undefined}
                         ativo={somenteBaixo}
-                        acao={baixo > 0 ? (somenteBaixo ? 'Limpar filtro' : 'Ver itens') : undefined} />
+                        acao={!semDados && baixo > 0 ? (somenteBaixo ? 'Limpar filtro' : 'Ver itens') : undefined} />
                 </section>
                 </div>
             </div>
@@ -325,6 +336,19 @@ const ProductList = () => {
                         />
                     </div>
 
+                    {!carregando && erroCarga && produtos.length > 0 && (
+                        <div className="aviso-carga" role="status">
+                            <CircleAlert size={16} aria-hidden="true" />
+                            <span>
+                                Não foi possível atualizar a lista ({erroCarga.replace(/\.$/, '')}).
+                                {atualizadoEm && ` Mostrando os dados das ${hora.format(atualizadoEm)}.`}
+                            </span>
+                            <button type="button" onClick={atualizarLista} disabled={atualizando}>
+                                {atualizando ? 'Tentando…' : 'Tentar de novo'}
+                            </button>
+                        </div>
+                    )}
+
                     {somenteBaixo && (
                         <div className="filtro-ativo">
                             <span>Mostrando só itens com até {ESTOQUE_BAIXO} unidades.</span>
@@ -370,7 +394,18 @@ const ProductList = () => {
                                 />
                             ))}
 
-                            {!carregando && visiveis.length === 0 && (
+                            {falhouSemDados && (
+                                <div className="empty-state erro-carga" role="alert">
+                                    <CircleAlert size={28} aria-hidden="true" />
+                                    <strong>Não foi possível carregar o estoque</strong>
+                                    <p>{erroCarga.replace(/\.?$/, '.')} Isso não quer dizer que o estoque esteja vazio.</p>
+                                    <Button icon={RefreshCw} className="btn-sm" onClick={atualizarLista} carregando={atualizando}>
+                                        Tentar de novo
+                                    </Button>
+                                </div>
+                            )}
+
+                            {!carregando && !falhouSemDados && visiveis.length === 0 && (
                                 <div className="empty-state">
                                     <PackageOpen size={28} aria-hidden="true" />
                                     <strong>{filtroAtivo ? 'Nenhum produto encontrado' : 'Nenhum produto cadastrado'}</strong>

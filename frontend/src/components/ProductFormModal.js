@@ -4,6 +4,7 @@ import instance, { mensagemDeErro } from '../services/api';
 import Modal from './Modal';
 import Field from './Field';
 import Button from './Button';
+import { formatarCodigo } from '../utils/formatos';
 
 // Mesmos limites do backend (validators.py)
 const QUANTIDADE_MAX = 2147483647;
@@ -119,7 +120,7 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
         <form ref={escopo} onSubmit={handleSubmit} noValidate className="product-form">
             <div className="modal-header">
                 <h2>{editando ? 'Editar produto' : 'Novo produto'}</h2>
-                {editando && <p>Item #{produto.id}</p>}
+                {editando && <p>Item {formatarCodigo(produto.id)}</p>}
             </div>
 
             <Field
