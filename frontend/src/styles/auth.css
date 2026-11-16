@@ -90,7 +90,7 @@
   width: 100%;
   max-width: 380px;
   padding: 1.75rem;
-  border-radius: 0;
+  border-radius: var(--radius-lg);
   background-color: var(--surface);
   border: 1px solid var(--border);
   box-shadow: var(--shadow-sm);

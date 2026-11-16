@@ -195,7 +195,7 @@ button.stat-card:focus-visible {
 /* Rótulos em caixa alta e espaçados, como em painel de equipamento */
 .stat-label,
 .chart-head h2 {
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -226,7 +226,7 @@ button.stat-card:focus-visible {
   left: 0;
   right: 0;
   height: 4px;
-  background: repeating-linear-gradient(-45deg, var(--accent) 0 8px, transparent 8px 16px);
+  background: repeating-linear-gradient(-45deg, var(--danger) 0 8px, transparent 8px 16px);
 }
 
 .stat-rodape {
@@ -253,8 +253,8 @@ button.stat-card:focus-visible {
 /* ---------- Gráfico: valor por categoria ---------- */
 .chart-card {
   margin-bottom: 1.75rem;
-  padding: 1rem 1.1rem 1.1rem;
-  border-radius: 0;
+  padding: 1rem 1.1rem 1rem;
+  border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background-color: var(--surface);
   box-shadow: var(--shadow-sm);
@@ -283,108 +283,79 @@ button.stat-card:focus-visible {
   font-variant-numeric: tabular-nums;
 }
 
-.seg-area {
-  position: relative;
-}
-
-/* Barra segmentada alta: 28px, blocos com cantos de 4px e 2px de folga entre eles */
-.seg-bar {
-  display: flex;
-  gap: 2px;
-  height: 28px;
-}
-
-.seg {
-  flex-basis: 0;
-  min-width: 2px;
-  padding-left: 0.5rem;
-  border-radius: 4px;
-  background: var(--cor);
-  color: var(--tinta);
-  font-size: 0.75rem;
-  font-weight: 600;
-  line-height: 28px;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: opacity 0.15s;
-}
-
-.seg.outras {
-  cursor: default;
-}
-
-.seg.apagado {
-  opacity: 0.3;
-}
-
-.seg-dica {
-  position: absolute;
-  bottom: calc(100% + 8px);
-  z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
-  padding: 0.45rem 0.65rem;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  box-shadow: var(--shadow-lg);
-  font-size: 0.75rem;
-  white-space: nowrap;
-  transform: translateX(-50%);
-  pointer-events: none;
-}
-
-.seg-dica.inicio { transform: translateX(-16px); }
-.seg-dica.fim { transform: translateX(calc(-100% + 16px)); }
-
-.seg-dica strong {
-  font-size: 0.8125rem;
-}
-
-.seg-dica span {
-  color: var(--text-muted);
-  font-variant-numeric: tabular-nums;
-}
-
-.seg-dica-membros {
-  max-width: 260px;
-  white-space: normal;
-}
-
-.chart-legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.2rem 0.9rem;
-  margin: 0.85rem 0 0;
+/* Barras horizontais: nome · trilho · valor · %. Duas colunas quando há espaço. */
+.cat-lista {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: repeat(3, auto);
+  grid-auto-flow: column;
+  gap: 0.15rem 2.5rem;
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
-.legend-item {
-  display: inline-flex;
+.cat-linha {
+  display: grid;
+  grid-template-columns: minmax(90px, 9rem) 1fr 5.5rem 2.75rem;
   align-items: center;
-  gap: 0.4rem;
-  margin-left: -0.3rem;
-  padding: 0.15rem 0.3rem;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.4rem 0.4rem;
   border: none;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius);
   background: none;
   font-size: 0.8125rem;
+  text-align: left;
   color: var(--text);
 }
 
-button.legend-item:hover {
+button.cat-linha:hover {
   background: var(--hover);
 }
 
-button.legend-item[aria-pressed='true'] {
+button.cat-linha[aria-pressed='true'] {
   background: var(--accent-subtle);
 }
 
-.legend-valor {
-  color: var(--text-muted);
+.cat-nome {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* trilho fino com a ponta da barra arredondada; uma cor só (zinco), laranja na categoria filtrada */
+.cat-trilho {
+  height: 8px;
+  border-radius: 2px;
+  background: var(--nivel-trilho);
+  overflow: hidden;
+}
+
+.cat-trilho span {
+  display: block;
+  height: 100%;
+  background: light-dark(#71717a, #a1a1aa);
+  transform-origin: left;
+  transition: transform 0.3s ease-out, background-color 0.15s;
+}
+
+button.cat-linha[aria-pressed='true'] .cat-trilho span {
+  background: var(--accent);
+}
+
+.cat-valor,
+.cat-parte {
+  text-align: right;
   font-variant-numeric: tabular-nums;
+}
+
+.cat-parte {
+  color: var(--text-muted);
+}
+
+.cat-linha.outras {
+  color: var(--text-muted);
 }
 
 /* ---------- Lista ---------- */
@@ -461,15 +432,23 @@ button.legend-item[aria-pressed='true'] {
   background: var(--hover);
 }
 
-/* Ordenação do modo cartões: só aparece quando o cabeçalho da tabela some (≤ 900px) */
-.sort-select {
+/* Selects da barra: categoria (sempre) e ordenação (só no modo cartões, ≤ 900px) */
+.campo-select {
   position: relative;
-  flex: 1;
-  display: none;
+  display: flex;
   align-items: center;
 }
 
-.sort-select select {
+.categoria-select {
+  flex: 0 1 230px;
+}
+
+.sort-select {
+  flex: 1;
+  display: none;
+}
+
+.campo-select select {
   width: 100%;
   height: 36px;
   padding: 0 2rem 0 0.7rem;
@@ -482,7 +461,13 @@ button.legend-item[aria-pressed='true'] {
   cursor: pointer;
 }
 
-.sort-select select:focus-visible {
+/* filtro de categoria ligado: borda laranja, como o item ativo */
+.categoria-select.ativo select {
+  border-color: var(--accent);
+  background-color: var(--accent-subtle);
+}
+
+.campo-select select:focus-visible {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
@@ -492,40 +477,6 @@ button.legend-item[aria-pressed='true'] {
   right: 0.6rem;
   color: var(--text-faint);
   pointer-events: none;
-}
-
-/* ---------- Filtro por categoria ---------- */
-.chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.35rem;
-  margin-bottom: 1rem;
-}
-
-.chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  height: 28px;
-  padding: 0 0.65rem;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  font-size: 0.8125rem;
-  color: var(--text-muted);
-  white-space: nowrap;
-  transition: color 0.15s, border-color 0.15s, background-color 0.15s;
-}
-
-.chip:hover {
-  color: var(--text);
-  border-color: var(--border-strong);
-}
-
-.chip.active {
-  color: var(--accent-text);
-  border-color: currentColor;
-  background: var(--accent-subtle);
 }
 
 /* Aviso do filtro ligado pelo indicador "Estoque baixo" (que pode estar fora da tela) */
@@ -586,7 +537,7 @@ button.legend-item[aria-pressed='true'] {
   display: flex;
   align-items: center;
   padding: 0.6rem 0;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -676,7 +627,7 @@ button.legend-item[aria-pressed='true'] {
 }
 
 .td-nome,
-.td-texto {
+.td-categoria {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -687,9 +638,6 @@ button.legend-item[aria-pressed='true'] {
 }
 
 .td-categoria {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
   color: var(--text-muted);
 }
 
@@ -810,7 +758,9 @@ button.legend-item[aria-pressed='true'] {
   text-align: center;
 }
 
-.empty-state svg {
+/* só o ícone grande do estado vazio: sem o ">", a regra pegava também o "+" do botão
+   (que ficava cinza sobre o laranja e 4px acima do centro) */
+.empty-state > svg {
   margin-bottom: 0.5rem;
   color: var(--text-faint);
 }
@@ -833,6 +783,39 @@ button.legend-item[aria-pressed='true'] {
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  /* tablet e celular: a lista vem antes do gráfico */
+  .chart-card {
+    order: 1;
+    margin: 1.75rem 0 0;
+  }
+
+  /* com o gráfico depois da lista, "01 · 03 · 02" fica fora de ordem: some a numeração */
+  .secao-num {
+    display: none;
+  }
+}
+
+/* gráfico numa coluna só quando não cabem duas */
+@media (max-width: 760px) {
+  .cat-lista {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-flow: row;
+  }
+
+  .cat-linha {
+    grid-template-columns: minmax(80px, 7.5rem) 1fr 4.75rem 2.5rem;
+    gap: 0.5rem;
+  }
+}
+
+/* celular estreito: categoria numa linha, ordenação e atualizar na de baixo */
+@media (max-width: 600px) {
+  /* .toolbar na frente: precisa vencer o "flex: 1" do bloco de 900px, que vem depois no arquivo */
+  .toolbar .categoria-select {
+    flex: 1 1 100%;
+  }
 }
 
 /* A tabela com ações precisa de ~860px de tela; abaixo disso
@@ -846,6 +829,10 @@ button.legend-item[aria-pressed='true'] {
   .search {
     flex-basis: 100%;
     max-width: none;
+  }
+
+  .categoria-select {
+    flex: 1;
   }
 
   .sort-select {
@@ -919,11 +906,7 @@ button.legend-item[aria-pressed='true'] {
     padding: 0 1rem;
   }
 
-  /* Celular: a lista vem antes do gráfico */
-  .chart-card {
-    order: 1;
-    margin: 1.5rem 0 0;
-  }
+
 
   .role {
     display: none;
@@ -965,24 +948,6 @@ button.legend-item[aria-pressed='true'] {
     display: none;
   }
 
-  /* Celular: categorias numa fileira só, rolando na horizontal até a borda da tela */
-  .chips {
-    flex-wrap: nowrap;
-    overflow-x: auto;
-    scrollbar-width: none;
-    margin: 0 -1rem 0.75rem;
-    padding: 0 1rem;
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 1rem, #000 calc(100% - 2rem), transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 1rem, #000 calc(100% - 2rem), transparent);
-  }
-
-  .chips::-webkit-scrollbar {
-    display: none;
-  }
-
-  .chip {
-    flex-shrink: 0;
-  }
 
   .field-row {
     grid-template-columns: 1fr;
@@ -1024,14 +989,15 @@ button.legend-item[aria-pressed='true'] {
   }
 
   .search input,
-  .sort-select select {
+  .campo-select select {
     height: 40px;
     font-size: 1rem;
   }
 
-  .chip {
-    height: 40px;
+  .cat-linha {
+    min-height: 40px;
   }
+
 
   .search-clear {
     width: 32px;

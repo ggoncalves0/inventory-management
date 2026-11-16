@@ -1,51 +1,20 @@
-import { useEffect, useRef, useState } from 'react';
-
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 // Total: mesmo formato do indicador "Valor em estoque" (R$ 1,26 mi)
 const moedaTotal = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumFractionDigits: 2 });
 const formatarTotal = (v) => (v >= 100000 ? moedaTotal.format(v) : moeda.format(v));
-// Legenda: todos no mesmo formato curto (R$ 1,06 mi · R$ 28,3 mil); o valor exato fica na dica
-const moedaLegenda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumSignificantDigits: 3 });
+// Linhas: todas no mesmo formato curto (R$ 1,06 mi · R$ 28,3 mil); o valor exato vai no title
+const moedaCurta = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumSignificantDigits: 3 });
 const porcento = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 });
 
-// Largura mínima (px) de um bloco para caber o "62%" dentro dele com folga
-const LARGURA_ROTULO = 44;
+// Barras horizontais em ordem de valor, uma cor só, com nome e valor escritos em cada linha.
+// Com dados desiguais (uma categoria com 84%) cada categoria continua legível — numa barra única
+// as menores viravam tiras impossíveis de comparar.
+// `linhas`: [{ nome, valor, membros? }] em ordem decrescente; "Outras" tem `membros` e não filtra.
+const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar }) => {
+    if (!total) return null;
 
-// Barra segmentada: um todo (valor do estoque) dividido por categoria.
-// `fatias`: [{ nome, valor, cor, tinta, membros? }] já na ordem de exibição; "Outras" tem `membros` e não filtra.
-const CategoryValueChart = ({ fatias, total, categoriaAtiva, onSelecionar }) => {
-    const barraRef = useRef(null);
-    const [largura, setLargura] = useState(0);
-    const [destaque, setDestaque] = useState(null);
-
-    const temValor = total > 0;
-
-    // A barra só existe quando há valor: observa de novo quando ela aparece
-    useEffect(() => {
-        const barra = barraRef.current;
-        if (!barra) return undefined;
-        const observador = new ResizeObserver(([entrada]) => setLargura(entrada.contentRect.width));
-        observador.observe(barra);
-        return () => observador.disconnect();
-    }, [temValor]);
-
-    if (!temValor) return null;
-
-    const comValor = fatias.filter((f) => f.valor > 0);
-    const filtrando = categoriaAtiva !== 'Todas';
-    const descricao = comValor.map((f) => `${f.nome} ${porcento.format(f.valor / total)}`).join(', ');
-
-    // posição horizontal (centro de cada bloco) para ancorar a dica
-    let acumulado = 0;
-    const blocos = comValor.map((f) => {
-        const parte = f.valor / total;
-        const centro = acumulado + parte / 2;
-        acumulado += parte;
-        return { ...f, parte, centro };
-    });
-    const bloco = blocos.find((b) => b.nome === destaque);
-
-    const alinhamento = !bloco ? '' : bloco.centro < 0.15 ? 'inicio' : bloco.centro > 0.85 ? 'fim' : '';
+    // a maior barra ocupa a trilha inteira; as outras são proporcionais a ela
+    const maior = Math.max(...linhas.map((l) => l.valor));
 
     return (
         <section className="chart-card cantoneiras" aria-labelledby="titulo-valor-categoria">
@@ -54,68 +23,33 @@ const CategoryValueChart = ({ fatias, total, categoriaAtiva, onSelecionar }) => 
                 <span className="chart-total" title={moeda.format(total)}>{formatarTotal(total)}</span>
             </div>
 
-            <div className="seg-area">
-                <div
-                    ref={barraRef}
-                    className="seg-bar"
-                    role="img"
-                    aria-label={`Valor em estoque por categoria: ${descricao}`}
-                    onMouseLeave={() => setDestaque(null)}
-                >
-                    {blocos.map((b) => {
-                        const cabe = b.parte * largura >= LARGURA_ROTULO;
-                        const apagado = (filtrando && b.nome !== categoriaAtiva) || (destaque && destaque !== b.nome);
-                        return (
-                            <div
-                                key={b.nome}
-                                className={`seg ${b.membros ? 'outras' : ''} ${apagado ? 'apagado' : ''}`}
-                                style={{ flexGrow: b.valor, '--cor': b.cor, '--tinta': b.tinta }}
-                                onMouseEnter={() => setDestaque(b.nome)}
-                                onClick={b.membros ? undefined : () => onSelecionar(b.nome)}
-                            >
-                                {cabe && porcento.format(b.parte)}
-                            </div>
-                        );
-                    })}
-                </div>
-
-                {bloco && (
-                    <div
-                        className={`seg-dica ${alinhamento}`}
-                        style={{ left: `${bloco.centro * 100}%` }}
-                        aria-hidden="true"
-                    >
-                        <strong>{bloco.nome}</strong>
-                        <span>{moeda.format(bloco.valor)} · {porcento.format(bloco.parte)}</span>
-                        {bloco.membros && <span className="seg-dica-membros">{bloco.membros.join(', ')}</span>}
-                    </div>
-                )}
-            </div>
-
-            <ul className="chart-legend">
-                {blocos.map((b) => {
+            <ul className="cat-lista">
+                {linhas.map((l) => {
+                    const parte = l.valor / total;
                     const conteudo = (
                         <>
-                            <span className="cat-dot" style={{ '--cor': b.cor }} aria-hidden="true" />
-                            <span className="legend-nome">{b.nome}</span>
-                            <span className="legend-valor">{moedaLegenda.format(b.valor)}</span>
+                            <span className="cat-nome">{l.nome}</span>
+                            <span className="cat-trilho" aria-hidden="true">
+                                <span style={{ transform: `scaleX(${maior ? l.valor / maior : 0})` }} />
+                            </span>
+                            <span className="cat-valor">{moedaCurta.format(l.valor)}</span>
+                            <span className="cat-parte">{porcento.format(parte)}</span>
                         </>
                     );
                     return (
-                        <li key={b.nome}>
-                            {b.membros ? (
-                                <span className="legend-item" title={b.membros.join(', ')}>{conteudo}</span>
+                        <li key={l.nome}>
+                            {l.membros ? (
+                                <span className="cat-linha outras" title={`${l.membros.join(', ')}: ${moeda.format(l.valor)}`}>
+                                    {conteudo}
+                                </span>
                             ) : (
                                 <button
                                     type="button"
-                                    className="legend-item"
-                                    aria-pressed={categoriaAtiva === b.nome}
-                                    aria-label={`${b.nome}: ${moeda.format(b.valor)}, ${porcento.format(b.parte)} do valor. Filtrar a lista`}
-                                    onClick={() => onSelecionar(b.nome)}
-                                    onMouseEnter={() => setDestaque(b.nome)}
-                                    onMouseLeave={() => setDestaque(null)}
-                                    onFocus={() => setDestaque(b.nome)}
-                                    onBlur={() => setDestaque(null)}
+                                    className="cat-linha"
+                                    aria-pressed={categoriaAtiva === l.nome}
+                                    aria-label={`${l.nome}: ${moeda.format(l.valor)}, ${porcento.format(parte)} do valor. Filtrar a lista`}
+                                    title={moeda.format(l.valor)}
+                                    onClick={() => onSelecionar(l.nome)}
                                 >
                                     {conteudo}
                                 </button>

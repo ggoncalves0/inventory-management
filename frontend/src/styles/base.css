@@ -49,26 +49,6 @@
   --success-text: light-dark(#1f7a3d, #6bcb8b);
   --success-subtle: light-dark(#e9f6ee, rgba(107, 203, 139, 0.12));
 
-  /* Categorias: ordem fixa validada para daltonismo (ΔE adjacente ≥ 8) nos dois temas.
-     Cor acompanha a categoria; da 8ª em diante tudo vira "Outras" (cinza). */
-  --serie-1: light-dark(#256abf, #3987e5);
-  --serie-2: light-dark(#eb6834, #d95926);
-  --serie-3: light-dark(#1baf7a, #199e70);
-  --serie-4: light-dark(#eda100, #c98500);
-  --serie-5: light-dark(#e87ba4, #d55181);
-  --serie-6: light-dark(#008300, #0ca30c);
-  --serie-7: light-dark(#6250d6, #9085e9);
-  --serie-outras: light-dark(#a3a29c, #5c5c60);
-  /* Texto dentro de cada bloco: branco ou quase preto, o que der mais contraste (≥ 4,5:1 medido) */
-  --tinta-1: light-dark(#ffffff, #0b0b0b);
-  --tinta-2: #0b0b0b;
-  --tinta-3: #0b0b0b;
-  --tinta-4: #0b0b0b;
-  --tinta-5: #0b0b0b;
-  --tinta-6: light-dark(#ffffff, #0b0b0b);
-  --tinta-7: light-dark(#ffffff, #0b0b0b);
-  --tinta-outras: light-dark(#0b0b0b, #ffffff);
-
   /* Barra de nível de estoque */
   --nivel: light-dark(#a1a1aa, #71717a);
   --nivel-trilho: light-dark(#e4e4e7, #3a3a40);
@@ -82,9 +62,10 @@
   --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
   --font-mono: ui-monospace, 'Cascadia Code', 'SF Mono', Consolas, monospace;
 
+  /* cantos quase retos em tudo (industrial) */
   --radius-sm: 2px;
-  --radius: 4px;
-  --radius-lg: 6px;
+  --radius: 2px;
+  --radius-lg: 2px;
 }
 
 /* =========================================================
@@ -224,7 +205,7 @@ kbd {
   align-items: center;
   gap: 0.6rem;
   margin: 0 0 0.75rem;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -234,7 +215,7 @@ kbd {
 .secao-num {
   font-family: var(--font-mono);
   font-weight: 600;
-  color: var(--accent-text);
+  color: var(--text-faint);
 }
 
 /* linha fina até o fim da seção */
@@ -272,15 +253,6 @@ kbd {
   background: var(--hover);
 }
 
-/* Ponto de cor da categoria (a mesma cor do gráfico de valor) */
-.cat-dot {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--cor, var(--serie-outras));
-}
 
 /* =========================================================
    Botões
@@ -623,7 +595,12 @@ kbd {
 }
 
 .modal-header h2 {
-  font-size: 1.125rem;
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
 }
 
 .modal-header p {

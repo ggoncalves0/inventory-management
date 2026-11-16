@@ -16,8 +16,7 @@ function nivelEstoque(qtd) {
 }
 
 // Memoizada: digitar na busca só re-renderiza as linhas que mudaram.
-// `cor`: cor da categoria (a mesma do gráfico de valor); sem cor = categoria em "Outras".
-const ProductRow = memo(({ produto: p, cor, isAdmin, onEditar, onExcluir }) => {
+const ProductRow = memo(({ produto: p, isAdmin, onEditar, onExcluir }) => {
     const nivel = nivelEstoque(p.quantidade);
     const preenchimento = p.quantidade === 0 ? 0 : Math.max(0.06, Math.min(1, p.quantidade / ESTOQUE_CHEIO));
 
@@ -25,10 +24,7 @@ const ProductRow = memo(({ produto: p, cor, isAdmin, onEditar, onExcluir }) => {
         <div role="row" className={`row ${nivel ? nivel.classe : ''}`}>
             <span role="cell" className="td td-id">#{String(p.id).padStart(4, '0')}</span>
             <span role="cell" className="td td-nome" title={p.nome}>{p.nome}</span>
-            <span role="cell" className="td td-categoria" title={p.categoria}>
-                <span className="cat-dot" style={cor ? { '--cor': cor } : undefined} aria-hidden="true" />
-                <span className="td-texto">{p.categoria}</span>
-            </span>
+            <span role="cell" className="td td-categoria" title={p.categoria}>{p.categoria}</span>
             <span role="cell" className="td td-quantidade">
                 {nivel && <span className={`stock-badge ${nivel.classe}`}>{nivel.rotulo}</span>}
                 <span className="stock-bar" aria-hidden="true">

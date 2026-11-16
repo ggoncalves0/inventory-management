@@ -24,8 +24,8 @@ const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digi
 // A partir de R$ 100 mil o valor completo não cabe no indicador: vira "R$ 1,26 mi" (o exato fica no title)
 const formatarValorEstoque = (v) => (v >= 100000 ? moedaCompacta.format(v) : moeda.format(v));
 
-// O gráfico tem 7 cores (paleta validada para daltonismo); a partir da 8ª categoria, o resto vira "Outras"
-const MAX_SERIES = 7;
+// O gráfico mostra as 5 categorias de maior valor; o resto vira uma linha "Outras"
+const MAX_LINHAS = 5;
 
 const normalizar = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -122,30 +122,23 @@ const ProductList = () => {
         esgotados: produtos.filter((p) => p.quantidade === 0).length,
     }), [produtos]);
 
-    // Cor de cada categoria pela posição no valor total (calculada sobre todos os produtos,
-    // então filtrar a lista não troca as cores). As 7 maiores ganham cor; o resto fica cinza.
-    const { fatias, coresCategoria } = useMemo(() => {
+    // Valor por categoria, em ordem decrescente (sobre todos os produtos, não só os filtrados).
+    // Uma categoria sozinha não vira "Outras (1)": se sobrar só uma, ela aparece com o próprio nome.
+    const linhasValor = useMemo(() => {
         const valores = new Map();
         produtos.forEach((p) => valores.set(p.categoria, (valores.get(p.categoria) || 0) + p.quantidade * p.preco));
         const ordenadas = [...valores].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'pt-BR'));
-        const destaque = ordenadas.slice(0, MAX_SERIES).filter(([, v]) => v > 0);
-        const resto = ordenadas.slice(destaque.length);
-
-        const cores = {};
-        const lista = destaque.map(([nome, valor], i) => {
-            cores[nome] = `var(--serie-${i + 1})`;
-            return { nome, valor, cor: cores[nome], tinta: `var(--tinta-${i + 1})` };
-        });
+        const limite = ordenadas.length === MAX_LINHAS + 1 ? ordenadas.length : MAX_LINHAS;
+        const lista = ordenadas.slice(0, limite).map(([nome, valor]) => ({ nome, valor }));
+        const resto = ordenadas.slice(limite);
         if (resto.length) {
             lista.push({
                 nome: `Outras (${resto.length})`,
                 valor: resto.reduce((s, [, v]) => s + v, 0),
-                cor: 'var(--serie-outras)',
-                tinta: 'var(--tinta-outras)',
                 membros: resto.map(([nome]) => nome),
             });
         }
-        return { fatias: lista, coresCategoria: cores };
+        return lista;
     }, [produtos]);
 
     const visiveis = useMemo(() => {
@@ -281,14 +274,17 @@ const ProductList = () => {
 
             <main className="dashboard-content">
                 <CategoryValueChart
-                    fatias={fatias}
+                    linhas={linhasValor}
                     total={estatisticas.valor}
                     categoriaAtiva={categoriaAtiva}
                     onSelecionar={selecionarCategoria}
                 />
 
                 <section ref={painelRef} className="panel" aria-labelledby="secao-inventario">
-                    <h2 className="secao" id="secao-inventario"><span className="secao-num">03</span>Inventário</h2>
+                    {/* sem valor em estoque o gráfico (02) não aparece: o inventário assume o número dele */}
+                    <h2 className="secao" id="secao-inventario">
+                        <span className="secao-num">{estatisticas.valor > 0 ? '03' : '02'}</span>Inventário
+                    </h2>
                     <div className="toolbar">
                         <div className="search">
                             <Search size={16} className="search-icon" aria-hidden="true" />
@@ -305,7 +301,14 @@ const ProductList = () => {
                                 ? <button type="button" className="search-clear" onClick={() => setBusca('')} aria-label="Limpar busca"><X size={14} /></button>
                                 : <kbd>/</kbd>}
                         </div>
-                        <div className="sort-select">
+                        <div className={`campo-select categoria-select ${categoriaAtiva !== 'Todas' ? 'ativo' : ''}`}>
+                            <select aria-label="Filtrar por categoria" value={categoriaAtiva} onChange={(e) => setCategoriaAtiva(e.target.value)}>
+                                <option value="Todas">Todas as categorias</option>
+                                {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
+                            </select>
+                            <ChevronDown size={15} className="sort-seta" aria-hidden="true" />
+                        </div>
+                        <div className="campo-select sort-select">
                             <select aria-label="Ordenar por" value={`${ordem.campo}-${ordem.direcao}`} onChange={escolherOrdem}>
                                 {ORDENACOES.map(({ valor, rotulo }) => <option key={valor} value={valor}>{rotulo}</option>)}
                             </select>
@@ -321,25 +324,6 @@ const ProductList = () => {
                             title="Atualizar lista"
                         />
                     </div>
-
-                    {categorias.length > 0 && (
-                        <div className="chips" role="group" aria-label="Filtrar por categoria">
-                            {['Todas', ...categorias].map((c) => (
-                                <button
-                                    key={c}
-                                    type="button"
-                                    aria-pressed={categoriaAtiva === c}
-                                    className={`chip ${categoriaAtiva === c ? 'active' : ''}`}
-                                    onClick={() => setCategoriaAtiva(c)}
-                                >
-                                    {c !== 'Todas' && (
-                                        <span className="cat-dot" style={coresCategoria[c] ? { '--cor': coresCategoria[c] } : undefined} aria-hidden="true" />
-                                    )}
-                                    {c}
-                                </button>
-                            ))}
-                        </div>
-                    )}
 
                     {somenteBaixo && (
                         <div className="filtro-ativo">
@@ -380,7 +364,6 @@ const ProductList = () => {
                                 <ProductRow
                                     key={p.id}
                                     produto={p}
-                                    cor={coresCategoria[p.categoria]}
                                     isAdmin={isAdmin}
                                     onEditar={abrirEdicao}
                                     onExcluir={setProdutoExcluir}
