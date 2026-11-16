@@ -7,7 +7,8 @@ const FOCAVEIS = 'button:not([disabled]), input:not([disabled]), select, textare
 
 // `focoAoFechar`: função que devolve para onde o foco vai se quem abriu o diálogo não existe mais
 // (ex.: o botão "Excluir" some junto com a linha excluída).
-function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar }) {
+// `descricao`: id de um texto dentro do diálogo lido junto com o título ao abrir (aria-describedby).
+function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar, descricao }) {
     const caixaRef = useRef(null);
     const onCloseRef = useRef(onClose);
     onCloseRef.current = onClose;
@@ -73,6 +74,7 @@ function ModalConteudo({ onClose, titulo, children, largura, focoAoFechar }) {
                 role="dialog"
                 aria-modal="true"
                 aria-label={titulo}
+                aria-describedby={descricao}
                 className="modal-box"
                 style={{ maxWidth: largura }}
                 initial={{ opacity: 0, scale: 0.98 }}

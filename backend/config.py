@@ -29,12 +29,13 @@ app = Flask(__name__)
 FRONTEND_URL = os.getenv('FRONTEND_URL', 'http://localhost:3000')
 
 # O token vai no header Authorization, então não precisamos de cookies cross-origin.
-# X-Novo-Token (sessão deslizante, ver app.py) precisa ser exposto para o frontend conseguir lê-lo.
+# Headers que o frontend precisa ler: X-Novo-Token (sessão deslizante, ver app.py) e
+# X-Total-Count (total real da listagem, ver routes/products.py).
 CORS(
     app,
     resources={r"/*": {"origins": [FRONTEND_URL]}},
     allow_headers=['Content-Type', 'Authorization'],
-    expose_headers=['X-Novo-Token'],
+    expose_headers=['X-Novo-Token', 'X-Total-Count'],
     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     max_age=600,
 )

@@ -58,30 +58,33 @@ def listar_produtos():
     nome = request.args.get('nome', '').strip()
     categoria = request.args.get('categoria', '').strip()
 
-    query = f"SELECT {COLUNAS} FROM produtos WHERE 1=1"
+    filtros = " WHERE 1=1"
     params = []
 
     if id:
         if not id.isdigit():
             return jsonify([])
-        query += " AND id = %s"
+        filtros += " AND id = %s"
         params.append(int(id))
     if nome:
-        query += " AND nome LIKE %s"
+        filtros += " AND nome LIKE %s"
         params.append(f"%{escapar_like(nome[:100])}%")
     if categoria:
-        query += " AND categoria LIKE %s"
+        filtros += " AND categoria LIKE %s"
         params.append(f"%{escapar_like(categoria[:50])}%")
 
-    query += " ORDER BY id LIMIT %s"
-    params.append(LIMITE_LISTAGEM)
-
     cur = mysql.connection.cursor()
-    cur.execute(query, tuple(params))
+    # Total real com os mesmos filtros, sem o LIMIT: a tela avisa quando a lista foi cortada,
+    # em vez de somar só os primeiros LIMITE_LISTAGEM achando que é o estoque todo.
+    cur.execute(f"SELECT COUNT(*) FROM produtos{filtros}", tuple(params))
+    total = cur.fetchone()[0]
+    cur.execute(f"SELECT {COLUNAS} FROM produtos{filtros} ORDER BY id LIMIT %s", (*params, LIMITE_LISTAGEM))
     produtos = cur.fetchall()
     cur.close()
 
-    return jsonify([_serializar(p) for p in produtos])
+    resposta = jsonify([_serializar(p) for p in produtos])
+    resposta.headers['X-Total-Count'] = str(total)
+    return resposta
 
 
 @produtos_bp.route('/produtos/<int:id>', methods=['GET'])

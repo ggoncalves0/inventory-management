@@ -62,33 +62,76 @@ const valoresDe = (produto) => ({
     preco: produto ? formatoPreco.format(produto.preco) : '',
 });
 
-// `rascunho`: valores recuperados depois que a sessão expirou com este formulário aberto
+const ROTULOS = { nome: 'nome', categoria: 'categoria', quantidade: 'quantidade', preco: 'preço' };
+const listar = (itens) => new Intl.ListFormat('pt-BR', { style: 'long', type: 'conjunction' }).format(itens);
+const exibir = (campo, texto) => (texto === '' ? '(vazio)' : campo === 'preco' ? `R$ ${texto}` : texto);
+
+// O que o rascunho recuperado mudou, campo a campo, comparado aos dados atuais do servidor:
+// "Antes: 42" quando só você mexeu no campo; aviso quando ele também mudou no servidor nesse meio-tempo.
+function montarRecuperado(alterados, atuais, editando) {
+    const campos = CAMPOS.filter((c) => c in alterados);
+    const dicas = {};
+    let conflitos = 0;
+    if (editando) {
+        campos.forEach((c) => {
+            const { de, para } = alterados[c];
+            if (atuais[c] !== de && atuais[c] !== para) {
+                conflitos += 1;
+                dicas[c] = {
+                    tipo: 'aviso',
+                    texto: `Mudou no servidor enquanto sua sessão estava expirada: agora é ${exibir(c, atuais[c])} `
+                        + `(era ${exibir(c, de)}). Se salvar, fica ${exibir(c, para)}.`,
+                };
+            } else {
+                dicas[c] = { tipo: 'neutra', texto: `Antes: ${exibir(c, de)}` };
+            }
+        });
+    }
+    return { campos, dicas, conflitos };
+}
+
+// `rascunho`: campos alterados antes de a sessão expirar, { campo: { de, para } }. Só eles são aplicados,
+// e sobre os dados atuais do servidor: o que outra pessoa mudou nos outros campos não é desfeito.
 function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, rascunho }) {
     const { usuario } = useAuth();
     // Guardado em estado para o título não mudar enquanto o modal anima a saída
     const [produto] = useState(produtoInicial);
     const editando = !!produto;
 
-    // Valores de quando o formulário abriu: comparados aos atuais para saber se há algo a guardar
+    // Valores atuais do produto (vindos do servidor) quando o formulário abriu
     const [originais] = useState(() => valoresDe(produto));
-    const [recuperado] = useState(() => !!rascunho);
-    const [valores, setValores] = useState(() => (rascunho ? { ...originais, ...rascunho } : originais));
+    const [recuperado] = useState(() => (rascunho ? montarRecuperado(rascunho, originais, editando) : null));
+    const [valores, setValores] = useState(() => {
+        if (!rascunho) return originais;
+        const comRascunho = { ...originais };
+        Object.entries(rascunho).forEach(([c, { para }]) => { if (c in comRascunho) comRascunho[c] = para; });
+        return comRascunho;
+    });
     const [erros, setErros] = useState({});
     const [erro, setErro] = useState('');
     const [dicaCategoria, setDicaCategoria] = useState('');
     const [salvando, setSalvando] = useState(false);
     const escopo = useRef(null);
 
-    // Enquanto o formulário está aberto, o que foi digitado fica guardado nesta aba: se a sessão expirar,
-    // ele reabre depois do novo login. Fechar ou salvar descarta (ver ProductList).
+    // Enquanto o formulário está aberto, os campos alterados (valor de antes e o novo) ficam guardados nesta aba:
+    // se a sessão expirar, o formulário reabre depois do novo login. Fechar ou salvar descarta (ver ProductList).
     useEffect(() => {
         // Sessão acabou de cair (usuario vira null antes da tela sair): mantém o rascunho como estava,
         // senão ele seria regravado sem dono e descartado depois do novo login.
         if (!usuario) return;
-        const alterado = CAMPOS.some((c) => valores[c] !== originais[c]);
-        if (alterado) salvarRascunho({ usuario: usuario?.username, produtoId: produto?.id ?? null, valores });
-        else limparRascunho();
+        const alterados = {};
+        CAMPOS.forEach((c) => {
+            if (valores[c] !== originais[c]) alterados[c] = { de: originais[c], para: valores[c] };
+        });
+        if (Object.keys(alterados).length) {
+            salvarRascunho({ usuario: usuario.username, produtoId: produto?.id ?? null, alterados });
+        } else {
+            limparRascunho();
+        }
     }, [valores, originais, produto, usuario]);
+
+    const dica = (campo) => recuperado?.dicas[campo]?.texto;
+    const dicaTipo = (campo) => recuperado?.dicas[campo]?.tipo;
 
     const alterar = (campo, valor) => {
         setValores((atual) => ({ ...atual, [campo]: valor }));
@@ -156,10 +199,17 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, ra
                 {editando && <p>Item {formatarCodigo(produto.id)}</p>}
             </div>
 
+            {/* id ligado ao diálogo (aria-describedby): o leitor de tela lê o aviso ao abrir */}
             {recuperado && (
-                <p className="form-message info" role="status">
+                <p id="aviso-rascunho" className={`form-message ${recuperado.conflitos ? 'aviso' : 'info'}`} role="status">
                     <History size={16} aria-hidden="true" />
-                    Recuperamos o que você estava preenchendo quando a sessão expirou. Confira e salve.
+                    <span>
+                        Recuperamos o que você {editando ? 'alterou' : 'preencheu'} antes de a sessão expirar
+                        {recuperado.campos.length > 0 && ` (${listar(recuperado.campos.map((c) => ROTULOS[c]))})`}.
+                        {recuperado.conflitos > 0
+                            ? ` Atenção: ${recuperado.conflitos === 1 ? 'um campo mudou' : `${recuperado.conflitos} campos mudaram`} no servidor nesse meio-tempo; veja o aviso no campo antes de salvar.`
+                            : ' Confira e salve.'}
+                    </span>
                 </p>
             )}
 
@@ -170,6 +220,8 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, ra
                 onChange={(e) => alterar('nome', e.target.value)}
                 maxLength={100}
                 erro={erros.nome}
+                dica={dica('nome')}
+                dicaTipo={dicaTipo('nome')}
                 autoFocus
             />
             <Field
@@ -181,7 +233,8 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, ra
                 maxLength={50}
                 list="categorias-existentes"
                 erro={erros.categoria}
-                dica={dicaCategoria}
+                dica={dicaCategoria || dica('categoria')}
+                dicaTipo={dicaCategoria ? 'neutra' : dicaTipo('categoria')}
             />
             <datalist id="categorias-existentes">
                 {categorias.map((c) => <option key={c} value={c} />)}
@@ -195,6 +248,8 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, ra
                     value={valores.quantidade}
                     onChange={(e) => alterar('quantidade', somenteDigitos(e.target.value).slice(0, 10))}
                     erro={erros.quantidade}
+                    dica={dica('quantidade')}
+                    dicaTipo={dicaTipo('quantidade')}
                 />
                 <Field
                     label="Preço (R$)"
@@ -204,6 +259,8 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, ra
                     value={valores.preco}
                     onChange={(e) => alterar('preco', somenteDecimal(e.target.value).slice(0, 13))}
                     erro={erros.preco}
+                    dica={dica('preco')}
+                    dicaTipo={dicaTipo('preco')}
                 />
             </div>
 
@@ -224,7 +281,14 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias, ra
 }
 
 const ProductFormModal = ({ aberto, produto, onClose, onSaved, categorias = [], rascunho = null, focoAoFechar }) => (
-    <Modal aberto={aberto} onClose={onClose} titulo={produto ? 'Editar produto' : 'Novo produto'} largura={520} focoAoFechar={focoAoFechar}>
+    <Modal
+        aberto={aberto}
+        onClose={onClose}
+        titulo={produto ? 'Editar produto' : 'Novo produto'}
+        largura={520}
+        focoAoFechar={focoAoFechar}
+        descricao={rascunho ? 'aviso-rascunho' : undefined}
+    >
         <ProductForm produto={produto} onClose={onClose} onSaved={onSaved} categorias={categorias} rascunho={rascunho} />
     </Modal>
 );

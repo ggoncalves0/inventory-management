@@ -1,5 +1,5 @@
 import { memo } from 'react';
-import { Pencil, Trash2 } from 'lucide-react';
+import { Diff, Pencil, Trash2 } from 'lucide-react';
 import { formatarCodigo } from '../utils/formatos';
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
@@ -17,7 +17,7 @@ function nivelEstoque(qtd) {
 }
 
 // Memoizada: digitar na busca só re-renderiza as linhas que mudaram.
-const ProductRow = memo(({ produto: p, isAdmin, onEditar, onExcluir }) => {
+const ProductRow = memo(({ produto: p, isAdmin, onAjustar, onEditar, onExcluir }) => {
     const nivel = nivelEstoque(p.quantidade);
     const preenchimento = p.quantidade === 0 ? 0 : Math.max(0.06, Math.min(1, p.quantidade / ESTOQUE_CHEIO));
 
@@ -39,9 +39,19 @@ const ProductRow = memo(({ produto: p, isAdmin, onEditar, onExcluir }) => {
             <span role="cell" className="td td-preco">{moeda.format(p.preco)}</span>
             {isAdmin && (
                 <span role="cell" className="td td-acoes">
+                    {/* a ação mais frequente vem primeiro: entrada ou saída sem abrir o formulário completo */}
                     <button
                         type="button"
-                        className="icon-btn"
+                        className="icon-btn ajustar"
+                        onClick={() => onAjustar(p)}
+                        aria-label={`Ajustar estoque de ${p.nome}`}
+                        title="Ajustar estoque (entrada ou saída)"
+                    >
+                        <Diff size={15} />
+                    </button>
+                    <button
+                        type="button"
+                        className="icon-btn editar"
                         onClick={() => onEditar(p)}
                         aria-label={`Editar ${p.nome}`}
                         title="Editar"
@@ -50,7 +60,7 @@ const ProductRow = memo(({ produto: p, isAdmin, onEditar, onExcluir }) => {
                     </button>
                     <button
                         type="button"
-                        className="icon-btn danger"
+                        className="icon-btn danger excluir"
                         onClick={() => onExcluir(p)}
                         aria-label={`Excluir ${p.nome}`}
                         title="Excluir"

@@ -453,6 +453,18 @@ kbd {
   color: var(--text-muted);
 }
 
+.field-dica.aviso {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.35rem;
+  color: var(--warning-text);
+}
+
+.field-dica.aviso svg {
+  flex-shrink: 0;
+  margin-top: 0.15rem;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -492,6 +504,17 @@ kbd {
 
 .form-message.info svg {
   color: var(--accent-text);
+}
+
+/* aviso (âmbar): pede atenção sem ser erro — ex.: rascunho com campo que mudou no servidor */
+.form-message.aviso {
+  color: var(--text);
+  background: var(--warning-subtle);
+  border: 1px solid color-mix(in srgb, var(--warning-text) 35%, transparent);
+}
+
+.form-message.aviso svg {
+  color: var(--warning-text);
 }
 
 .form-message.erro {
@@ -666,6 +689,60 @@ kbd {
   margin: 0;
   color: var(--text-muted);
   overflow-wrap: anywhere;
+}
+
+/* =========================================================
+   Sem conexão com o servidor ao abrir o app
+   ========================================================= */
+.sem-conexao {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1.5rem;
+  padding: 2rem 1rem;
+}
+
+.sem-conexao-cartao {
+  width: 100%;
+  max-width: 440px;
+  padding: 1.75rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background-color: var(--surface);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.sem-conexao-cartao > svg {
+  margin-bottom: 0.5rem;
+  color: var(--text-faint);
+}
+
+.sem-conexao-cartao h1 {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.sem-conexao-cartao p {
+  margin: 0.5rem 0 0;
+  color: var(--text-muted);
+}
+
+.sem-conexao-status {
+  min-height: 1.5em;
+  font-size: 0.8125rem;
+}
+
+.sem-conexao-acoes {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
 }
 
 /* =========================================================

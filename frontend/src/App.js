@@ -8,11 +8,12 @@ import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
 import ProductList from './components/ProductList';
 import Loader from './components/Loader';
+import SemConexao from './components/SemConexao';
 
 // Os guards continuam renderizando a página durante a animação de saída,
 // em vez de desmontá-la de uma vez quando o token muda.
 function PrivateRoute({ children }) {
-  const { token, usuario } = useAuth();
+  const { token, usuario, erroConexao } = useAuth();
   const presente = useIsPresent();
   const jaEntrou = useRef(false);
   if (usuario) jaEntrou.current = true;
@@ -23,7 +24,8 @@ function PrivateRoute({ children }) {
       ? <>{children}<Navigate to="/" replace /></>
       : <Navigate to="/" replace />;
   }
-  if (!usuario) return <Loader />;
+  // token guardado mas o servidor não respondeu: a sessão continua, só falta conexão
+  if (!usuario) return erroConexao ? <SemConexao /> : <Loader />;
   return children;
 }
 

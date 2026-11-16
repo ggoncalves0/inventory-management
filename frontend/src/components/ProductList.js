@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
+import { flushSync } from 'react-dom';
 import { motion } from 'motion/react';
 import {
-    ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, CircleAlert, PackageOpen, Plus, RefreshCw, Search, X
+    ArrowDown, ArrowUp, ArrowUpDown, ChevronDown, CircleAlert, PackageOpen, Plus, Printer, RefreshCw, Search, TriangleAlert, X
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -14,6 +15,8 @@ import ThemeToggle from './ThemeToggle';
 import ProductRow, { ESTOQUE_BAIXO } from './ProductRow';
 import ConfirmModal from './ConfirmModal';
 import ProductFormModal from './ProductFormModal';
+import AjusteEstoqueModal from './AjusteEstoqueModal';
+import FolhaContagem from './FolhaContagem';
 import useMediaQuery from '../utils/useMediaQuery';
 import useTituloDaPagina from '../utils/useTituloDaPagina';
 import { canonizarCategorias, normalizar } from '../utils/categorias';
@@ -27,6 +30,9 @@ const inteiro = new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 0 });
 const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' });
 // A partir de R$ 100 mil o valor completo não cabe no indicador: vira "R$ 1,26 mi" (o exato fica no title)
 const formatarValorEstoque = (v) => (v >= 100000 ? moedaCompacta.format(v) : moeda.format(v));
+
+// A lista é exibida em blocos: montar 1.000 linhas de uma vez travava a tela por 1–1,5 s num notebook simples
+const PASSO = 100;
 
 // O gráfico mostra as 4 categorias de maior valor; o resto vira uma linha "Outras".
 // Com 5 linhas ele tem a altura dos indicadores 2×2 ao lado dele, na faixa.
@@ -64,6 +70,8 @@ const ProductList = () => {
     const [carregando, setCarregando] = useState(true);
     const [atualizando, setAtualizando] = useState(false);
     const [atualizadoEm, setAtualizadoEm] = useState(null);
+    // Total real no servidor (header X-Total-Count): a listagem traz no máximo 1.000 produtos
+    const [totalNoServidor, setTotalNoServidor] = useState(null);
     // Falha na última carga (mensagem para a tela). Não vira toast: a própria lista mostra o erro.
     const [erroCarga, setErroCarga] = useState(null);
     const [busca, setBusca] = useState('');
@@ -89,10 +97,21 @@ const ProductList = () => {
     // Mantém o nome no modal de exclusão enquanto ele anima a saída
     const ultimoExcluir = useRef(null);
     if (produtoExcluir) ultimoExcluir.current = produtoExcluir;
+    // Ajuste rápido de estoque (entrada/saída); o último fica guardado enquanto o modal anima a saída
+    const [produtoAjuste, setProdutoAjuste] = useState(null);
+    const ultimoAjuste = useRef(null);
+    if (produtoAjuste) ultimoAjuste.current = produtoAjuste;
+    // Durante a impressão, a folha de contagem é montada (e só então)
+    const [imprimindo, setImprimindo] = useState(false);
+    // Quem pediu "Mostrar mais": o foco vai para a 1ª linha nova (índice guardado aqui)
+    const focarLinha = useRef(null);
+    const sentinelaRef = useRef(null);
 
     const buscarProdutos = useCallback(async () => {
         try {
-            const { data } = await instance.get('/produtos');
+            const { data, headers } = await instance.get('/produtos');
+            const total = Number(headers['x-total-count']);
+            setTotalNoServidor(headers['x-total-count'] != null && Number.isFinite(total) ? total : null);
             // variações de digitação da mesma categoria ("periféricos", "Perifericos") viram uma só
             setProdutos(canonizarCategorias(data.map((p) => ({ ...p, preco: Number(p.preco) }))));
             setAtualizadoEm(new Date());
@@ -163,21 +182,79 @@ const ProductList = () => {
         return lista;
     }, [produtos]);
 
+    // Critérios adiados: o campo de busca, o seletor e as setas de ordenação respondem na hora;
+    // a lista acompanha logo em seguida, numa renderização que pode ser interrompida (não trava a digitação).
+    const buscaAdiada = useDeferredValue(busca);
+    const categoriaAdiada = useDeferredValue(categoriaAtiva);
+    const baixoAdiado = useDeferredValue(somenteBaixo);
+    const ordemAdiada = useDeferredValue(ordem);
+    const listaPendente = busca !== buscaAdiada || categoriaAtiva !== categoriaAdiada
+        || somenteBaixo !== baixoAdiado || ordem !== ordemAdiada;
+
     const visiveis = useMemo(() => {
-        const termo = normalizar(busca.trim().replace(/^#/, ''));
+        const termo = normalizar(buscaAdiada.trim().replace(/^#/, ''));
         const filtrados = produtos.filter((p) => {
-            if (categoriaAtiva !== 'Todas' && p.categoria !== categoriaAtiva) return false;
-            if (somenteBaixo && p.quantidade > ESTOQUE_BAIXO) return false;
+            if (categoriaAdiada !== 'Todas' && p.categoria !== categoriaAdiada) return false;
+            if (baixoAdiado && p.quantidade > ESTOQUE_BAIXO) return false;
             if (!termo) return true;
             const ehCodigo = /^\d+$/.test(termo) && Number(termo) === p.id;
             return ehCodigo || normalizar(p.nome).includes(termo) || normalizar(p.categoria).includes(termo);
         });
-        const fator = ordem.direcao === 'asc' ? 1 : -1;
+        const fator = ordemAdiada.direcao === 'asc' ? 1 : -1;
         return filtrados.sort((a, b) => {
-            const [x, y] = [a[ordem.campo], b[ordem.campo]];
+            const [x, y] = [a[ordemAdiada.campo], b[ordemAdiada.campo]];
             return (typeof x === 'string' ? x.localeCompare(y, 'pt-BR') : x - y) * fator;
         });
-    }, [produtos, busca, categoriaAtiva, somenteBaixo, ordem]);
+    }, [produtos, buscaAdiada, categoriaAdiada, baixoAdiado, ordemAdiada]);
+
+    // Blocos de PASSO linhas. Mudou a busca, o filtro ou a ordem: volta ao 1º bloco (estado derivado da
+    // chave, sem efeito — assim não há uma renderização intermediária com o limite antigo).
+    const chaveDaLista = `${buscaAdiada}|${categoriaAdiada}|${baixoAdiado}|${ordemAdiada.campo}|${ordemAdiada.direcao}`;
+    const [blocos, setBlocos] = useState({ chave: chaveDaLista, limite: PASSO });
+    // Chave nova: descarta o limite guardado (ajuste de estado durante a renderização, padrão do React).
+    // Sem isso, voltar a critérios anteriores (ex.: limpar a busca) restaurava o limite antigo de 300 linhas.
+    if (blocos.chave !== chaveDaLista) setBlocos({ chave: chaveDaLista, limite: PASSO });
+    const limite = blocos.chave === chaveDaLista ? blocos.limite : PASSO;
+    // Na impressão vai a lista inteira (com os filtros), não só os blocos já exibidos
+    const exibidos = imprimindo ? visiveis : visiveis.slice(0, limite);
+    const restantes = visiveis.length - Math.min(limite, visiveis.length);
+
+    const mostrarMais = useCallback((porTeclado = false) => {
+        if (porTeclado) focarLinha.current = limite; // índice da 1ª linha do novo bloco
+        setBlocos({ chave: chaveDaLista, limite: limite + PASSO });
+    }, [chaveDaLista, limite]);
+
+    // Quem usou o botão pelo teclado continua lendo de onde parou: foco no 1º botão da 1ª linha nova
+    useEffect(() => {
+        if (focarLinha.current == null) return;
+        const linha = document.querySelectorAll('.table-body .row:not(.skeleton)')[focarLinha.current];
+        focarLinha.current = null;
+        linha?.querySelector('button')?.focus();
+    }, [limite]);
+
+    // Rolando até o fim da lista, o próximo bloco entra sozinho (o botão continua lá para teclado e leitores de tela)
+    useEffect(() => {
+        const sentinela = sentinelaRef.current;
+        if (!sentinela || restantes <= 0) return undefined;
+        const observador = new IntersectionObserver(([entrada]) => {
+            if (entrada.isIntersecting) mostrarMais();
+        }, { rootMargin: '600px 0px' });
+        observador.observe(sentinela);
+        return () => observador.disconnect();
+    }, [restantes, mostrarMais]);
+
+    // Impressão (Ctrl+P ou o botão): monta a folha de contagem antes de o navegador gerar as páginas.
+    // flushSync: a atualização precisa estar na tela quando o beforeprint termina.
+    useEffect(() => {
+        const antes = () => flushSync(() => setImprimindo(true));
+        const depois = () => setImprimindo(false);
+        window.addEventListener('beforeprint', antes);
+        window.addEventListener('afterprint', depois);
+        return () => {
+            window.removeEventListener('beforeprint', antes);
+            window.removeEventListener('afterprint', depois);
+        };
+    }, []);
 
     const alternarOrdem = (campo) => {
         setOrdem((o) => ({ campo, direcao: o.campo === campo && o.direcao === 'asc' ? 'desc' : 'asc' }));
@@ -236,6 +313,7 @@ const ProductList = () => {
         const salvo = lerRascunho();
         if (!salvo) return;
         limparRascunho();
+        if (!salvo.alterados) return; // formato antigo (antes de guardar só os campos alterados): descarta
         if (salvo.usuario !== usuario.username) return; // de outra pessoa nesta aba: descarta
         if (salvo.produtoId != null) {
             const produto = produtos.find((p) => p.id === salvo.produtoId);
@@ -247,7 +325,7 @@ const ProductList = () => {
         } else {
             setProdutoEditado(null);
         }
-        setRascunho(salvo.valores);
+        setRascunho(salvo.alterados);
         setFormAberto(true);
     }, [carregando, erroCarga, usuario, produtos, mostrarToast]);
 
@@ -255,16 +333,34 @@ const ProductList = () => {
     // quem exclui vários itens em sequência continua no mesmo lugar, sem voltar ao topo da página.
     const focoDepoisDeExcluir = useCallback(() => {
         const id = vizinhoAoExcluir.current;
-        return (id != null && document.querySelector(`.row[data-id="${id}"] .icon-btn.danger`)) || inventarioRef.current;
+        return (id != null && document.querySelector(`.row[data-id="${id}"] .icon-btn.excluir`)) || inventarioRef.current;
     }, []);
 
     // Formulário aberto sem um botão de origem (reaberto pelo rascunho, ou no Safari, que não foca botões
     // ao clicar): ao fechar, o foco vai para o "Editar" da linha ou para o "Novo produto".
     const focoDepoisDoFormulario = useCallback(() => {
         const id = produtoEditadoRef.current?.id;
-        return (id != null && document.querySelector(`.row[data-id="${id}"] .icon-btn:not(.danger)`))
+        return (id != null && document.querySelector(`.row[data-id="${id}"] .icon-btn.editar`))
             || document.querySelector('.page-head .btn-primary');
     }, []);
+
+    const abrirAjuste = useCallback((p) => setProdutoAjuste(p), []);
+    const fecharAjuste = useCallback(() => setProdutoAjuste(null), []);
+    // Sem botão de origem (Safari não foca botões ao clicar): o foco volta ao "Ajustar" da linha
+    const focoDepoisDoAjuste = useCallback(() => {
+        const id = ultimoAjuste.current?.id;
+        return id != null ? document.querySelector(`.row[data-id="${id}"] .icon-btn.ajustar`) : null;
+    }, []);
+
+    const aoAjustar = ({ id, nome, tipo, n, de, para, mudou }) => {
+        setProdutos((lista) => lista.map((p) => (p.id === id ? { ...p, quantidade: para } : p)));
+        setProdutoAjuste(null);
+        const movimento = tipo === 'entrada' ? 'Entrada' : 'Saída';
+        // Se alguém tinha mexido no estoque antes, o ajuste valeu sobre o valor novo: avisa qual era
+        const aviso = mudou ? ` O estoque já estava em ${inteiro.format(de)} quando você salvou.` : '';
+        // em palavras, não com seta: o toast é lido pelo leitor de tela
+        mostrarToast('sucesso', `${movimento} de ${inteiro.format(n)} un. em "${nome}": estoque de ${inteiro.format(de)} para ${inteiro.format(para)}.${aviso}`);
+    };
 
     const confirmarExclusao = async () => {
         const alvo = produtoExcluir;
@@ -284,6 +380,13 @@ const ProductList = () => {
     };
 
     const filtroAtivo = busca || categoriaAtiva !== 'Todas' || somenteBaixo;
+    const listaCortada = totalNoServidor != null && totalNoServidor > produtos.length;
+    const descricaoFiltros = [
+        categoriaAdiada !== 'Todas' ? `Categoria: ${categoriaAdiada}` : 'Todas as categorias',
+        buscaAdiada.trim() && `Busca: “${buscaAdiada.trim()}”`,
+        baixoAdiado && `Só estoque baixo (até ${ESTOQUE_BAIXO} un.)`,
+        `Ordem: ${ORDENACOES.find((o) => o.valor === `${ordemAdiada.campo}-${ordemAdiada.direcao}`)?.rotulo}`,
+    ].filter(Boolean).join(' · ');
     // Sem dados confiáveis (carregando, ou a primeira carga falhou): os indicadores mostram "—", não zero
     const semDados = carregando || (erroCarga && produtos.length === 0);
     const falhouSemDados = !carregando && erroCarga && produtos.length === 0;
@@ -346,11 +449,26 @@ const ProductList = () => {
                             )}
                         </section>
 
+                        {/* A listagem foi cortada no limite do servidor: os números abaixo são de uma parte do estoque */}
+                        {listaCortada && (
+                            <p className="aviso-limite" role="status">
+                                <TriangleAlert size={16} aria-hidden="true" />
+                                <span>
+                                    O estoque tem {inteiro.format(totalNoServidor)} produtos, mas a lista carrega só
+                                    os {inteiro.format(produtos.length)} primeiros (por código). Indicadores, gráfico
+                                    e busca consideram só esses.
+                                </span>
+                            </p>
+                        )}
+
                         {/* Telas largas: indicadores 2×2 e gráfico lado a lado, para a lista caber na primeira tela */}
                         <div className={`resumo ${graficoNaFaixa ? 'com-grafico' : ''}`}>
                             <section className={`stats-grid ${semDados ? 'pendente' : ''}`} aria-label="Resumo do estoque" aria-busy={carregando || undefined}>
-                                <StatCard rotulo="Produtos" valor={semDados ? PENDENTE : inteiro.format(estatisticas.total)}
-                                    detalhe={semDados ? undefined : `${categorias.length} ${categorias.length === 1 ? 'categoria' : 'categorias'}`} />
+                                {/* com a lista cortada, o total de produtos vem do servidor (é o único número exato) */}
+                                <StatCard rotulo="Produtos" valor={semDados ? PENDENTE : inteiro.format(listaCortada ? totalNoServidor : estatisticas.total)}
+                                    detalhe={semDados ? undefined
+                                        : listaCortada ? `${inteiro.format(produtos.length)} carregados`
+                                        : `${categorias.length} ${categorias.length === 1 ? 'categoria' : 'categorias'}`} />
                                 <StatCard rotulo="Unidades" valor={semDados ? PENDENTE : inteiro.format(estatisticas.unidades)} />
                                 <StatCard rotulo="Valor em estoque" valor={semDados ? PENDENTE : formatarValorEstoque(estatisticas.valor)}
                                     titulo={semDados ? undefined : moeda.format(estatisticas.valor)}
@@ -411,6 +529,16 @@ const ProductList = () => {
                                 aria-busy={atualizando || undefined}
                                 title="Atualizar lista"
                             />
+                            {/* imprime a folha de contagem com a lista filtrada (o mesmo que Ctrl+P) */}
+                            <Button
+                                variante="ghost"
+                                icon={Printer}
+                                className="btn-icon"
+                                onClick={() => window.print()}
+                                disabled={carregando || visiveis.length === 0}
+                                aria-label="Imprimir folha de contagem"
+                                title="Imprimir folha de contagem"
+                            />
                         </div>
 
                         {!carregando && erroCarga && produtos.length > 0 && (
@@ -433,7 +561,12 @@ const ProductList = () => {
                             </div>
                         )}
 
-                        <div className={`table ${isAdmin ? 'with-actions' : ''}`} role="table" aria-label="Produtos">
+                        <div
+                            className={`table ${isAdmin ? 'with-actions' : ''} ${listaPendente ? 'pendente' : ''}`}
+                            role="table"
+                            aria-label="Produtos"
+                            aria-busy={listaPendente || undefined}
+                        >
                             <div className="table-head" role="row">
                                 {COLUNAS.map(({ campo, rotulo }) => {
                                     const ativo = ordem.campo === campo;
@@ -461,11 +594,12 @@ const ProductList = () => {
                                     </div>
                                 ))}
 
-                                {!carregando && visiveis.map((p) => (
+                                {!carregando && exibidos.map((p) => (
                                     <ProductRow
                                         key={p.id}
                                         produto={p}
                                         isAdmin={isAdmin}
+                                        onAjustar={abrirAjuste}
                                         onEditar={abrirEdicao}
                                         onExcluir={setProdutoExcluir}
                                     />
@@ -503,10 +637,25 @@ const ProductList = () => {
                             </div>
                         </div>
 
+                        {/* Próximo bloco: entra sozinho ao rolar (sentinela) ou pelo botão (teclado, leitor de tela) */}
+                        {!carregando && restantes > 0 && (
+                            <div className="mostrar-mais" ref={sentinelaRef}>
+                                <Button
+                                    variante="ghost"
+                                    onClick={(e) => mostrarMais(e.detail === 0)}
+                                >
+                                    Mostrar mais {inteiro.format(Math.min(PASSO, restantes))}
+                                    {' '}(faltam {inteiro.format(restantes)})
+                                </Button>
+                            </div>
+                        )}
+
                         {/* aria-live: ao filtrar, o leitor de tela anuncia a nova contagem */}
                         {!carregando && produtos.length > 0 && (
                             <p className="table-footer" aria-live="polite" aria-atomic="true">
-                                {visiveis.length} de {produtos.length} produtos
+                                {listaCortada
+                                    ? `${inteiro.format(visiveis.length)} de ${inteiro.format(produtos.length)} carregados · ${inteiro.format(totalNoServidor)} no estoque`
+                                    : `${inteiro.format(visiveis.length)} de ${inteiro.format(produtos.length)} produtos`}
                             </p>
                         )}
                     </section>
@@ -534,6 +683,23 @@ const ProductList = () => {
                 carregando={excluindo}
                 focoAoFechar={focoDepoisDeExcluir}
             />
+            <AjusteEstoqueModal
+                aberto={!!produtoAjuste}
+                produto={ultimoAjuste.current}
+                onClose={fecharAjuste}
+                onAjustado={aoAjustar}
+                focoAoFechar={focoDepoisDoAjuste}
+            />
+
+            {imprimindo && (
+                <FolhaContagem
+                    produtos={visiveis}
+                    filtros={descricaoFiltros}
+                    avisoLimite={listaCortada
+                        ? `Atenção: o estoque tem ${inteiro.format(totalNoServidor)} produtos; esta folha traz só os ${inteiro.format(produtos.length)} primeiros carregados.`
+                        : null}
+                />
+            )}
         </motion.div>
     );
 };

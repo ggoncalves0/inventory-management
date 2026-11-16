@@ -150,6 +150,25 @@
   color: var(--text-muted);
 }
 
+/* Lista cortada no limite do servidor: avisa antes dos indicadores, que somam só uma parte */
+.aviso-limite {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0 0 1rem;
+  padding: 0.55rem 0.75rem;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--warning-text) 35%, transparent);
+  background: var(--warning-subtle);
+  font-size: 0.8125rem;
+}
+
+.aviso-limite svg {
+  flex-shrink: 0;
+  margin-top: 0.1rem;
+  color: var(--warning-text);
+}
+
 /* ---------- Resumo: indicadores 2×2 e gráfico lado a lado (telas largas) ---------- */
 .resumo.com-grafico {
   display: grid;
@@ -637,7 +656,8 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
 
 /* ---------- Tabela em grid ---------- */
 .table {
-  --cols: 64px minmax(180px, 2.4fr) minmax(130px, 1.2fr) minmax(170px, 1.1fr) minmax(110px, 1fr);
+  /* mínimos: 3 botões de ação (desde o ajuste rápido) ainda cabem a partir de 904px sem rolagem lateral */
+  --cols: 64px minmax(170px, 2.4fr) minmax(120px, 1.2fr) minmax(170px, 1.1fr) minmax(110px, 1fr);
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background: var(--surface);
@@ -648,7 +668,8 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
 }
 
 .table.with-actions {
-  --cols: 64px minmax(180px, 2.4fr) minmax(130px, 1.2fr) minmax(170px, 1.1fr) minmax(110px, 1fr) var(--col-acoes, 72px);
+  /* ações: ajustar, editar e excluir (3 × 30px + espaços) */
+  --cols: 64px minmax(170px, 2.4fr) minmax(120px, 1.2fr) minmax(170px, 1.1fr) minmax(110px, 1fr) var(--col-acoes, 100px);
 }
 
 .table-head,
@@ -729,9 +750,23 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   border-bottom: 1px solid var(--border);
 }
 
-/* linhas que entram (ao carregar ou ao afrouxar um filtro) aparecem suavemente */
-.row:not(.skeleton) {
+/* Linhas que entram (ao carregar ou ao afrouxar um filtro) aparecem suavemente — só as 20 primeiras:
+   animar centenas de linhas ao mesmo tempo era parte do travamento com listas grandes. */
+.row:not(.skeleton):nth-child(-n + 20) {
   animation: aparecer 0.2s ease-out;
+}
+
+/* A lista ainda está acompanhando a busca/filtro (useDeferredValue): esmaece, com atraso para não piscar */
+.table.pendente .table-body {
+  opacity: 0.55;
+  transition: opacity 0.15s 0.1s;
+}
+
+/* Próximo bloco de linhas */
+.mostrar-mais {
+  display: flex;
+  justify-content: center;
+  margin-top: 0.75rem;
 }
 
 @keyframes aparecer {
@@ -1116,7 +1151,7 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
 /* Telas de toque: alvos com pelo menos ~40px */
 @media (pointer: coarse) {
   .table.with-actions {
-    --col-acoes: 96px;
+    --col-acoes: 152px; /* 3 × 44px + espaços */
   }
 
   .icon-btn {
@@ -1191,5 +1226,183 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   .stats-grid .stat-card.ativo {
     outline: 2px solid Highlight;
     outline-offset: -2px;
+  }
+}
+
+/* ---------- Ajuste rápido de estoque (diálogo) ---------- */
+.movimento {
+  margin: 0 0 1rem;
+  padding: 0;
+  border: none;
+}
+
+.movimento legend {
+  margin-bottom: 0.35rem;
+  padding: 0;
+  font-size: 0.8125rem;
+  font-weight: 500;
+}
+
+/* Entrada | Saída: dois rádios com cara de botões lado a lado */
+.movimento-opcoes {
+  display: flex;
+}
+
+.movimento-opcoes label {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45rem;
+  height: 38px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.movimento-opcoes label + label {
+  border-left: none;
+}
+
+.movimento-opcoes label.ativo {
+  border-color: var(--accent-text);
+  background: var(--accent-subtle);
+  font-weight: 600;
+}
+
+.movimento-opcoes label.ativo + label {
+  border-left: 1px solid var(--accent-text);
+}
+
+.movimento-opcoes input {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* o rádio em si recebe o foco; o contorno vai no rótulo inteiro */
+.movimento-opcoes input:focus-visible {
+  outline: none;
+}
+
+.movimento-opcoes label:has(input:focus-visible) {
+  outline: 2px solid var(--accent-text);
+  outline-offset: -2px;
+}
+
+.ajuste-previa {
+  margin: -0.25rem 0 0;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.ajuste-previa strong {
+  color: var(--text);
+  font-size: 1rem;
+}
+
+@media (pointer: coarse) {
+  .movimento-opcoes label {
+    height: 44px;
+  }
+}
+
+/* ---------- Folha de contagem (só na impressão) ---------- */
+.folha-contagem {
+  display: none;
+}
+
+@media print {
+  /* papel é claro: os tokens resolvem no tema claro, mesmo com o app no escuro */
+  :root {
+    color-scheme: light;
+  }
+
+  @page {
+    margin: 14mm 12mm;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  /* só a folha vai para o papel: barra, faixa, gráfico, botões, toasts e diálogos ficam de fora */
+  .dashboard > :not(.folha-contagem),
+  .toast-stack,
+  .modal-overlay {
+    display: none !important;
+  }
+
+  .folha-contagem {
+    display: block;
+    font-family: var(--font-body);
+    font-size: 10pt;
+    color: #000;
+  }
+
+  .folha-contagem h1 {
+    margin: 0 0 2mm;
+    font-family: var(--font-display);
+    font-size: 18pt;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+
+  .folha-contagem header p {
+    margin: 0 0 1.5mm;
+  }
+
+  .folha-campos {
+    display: flex;
+    gap: 10mm;
+    margin: 3mm 0 4mm !important;
+  }
+
+  .folha-contagem table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  .folha-contagem th,
+  .folha-contagem td {
+    padding: 1.6mm 2mm;
+    border-bottom: 0.5pt solid #999;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  .folha-contagem thead th {
+    border-bottom: 1pt solid #000;
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .folha-contagem .num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .folha-contagem .codigo {
+    font-family: var(--font-mono);
+    font-size: 8.5pt;
+  }
+
+  /* espaço para escrever a contagem à mão */
+  .folha-contagem td.contagem {
+    width: 30mm;
+    border-bottom: 0.75pt solid #000;
+  }
+
+  .folha-contagem tr {
+    break-inside: avoid;
+  }
+
+  .folha-total {
+    margin: 3mm 0 0;
+    font-weight: 600;
   }
 }
