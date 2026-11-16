@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Boxes } from 'lucide-react';
+import { LoaderCircle } from 'lucide-react';
 
 const Loader = () => (
     <motion.div
@@ -8,12 +8,9 @@ const Loader = () => (
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         role="status"
-        aria-label="Carregando"
     >
-        <div className="loader-orb">
-            <span className="loader-ring" />
-            <Boxes size={26} />
-        </div>
+        <LoaderCircle className="spin" size={18} aria-hidden="true" />
+        Carregando…
     </motion.div>
 );
 

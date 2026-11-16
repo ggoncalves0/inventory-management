@@ -22,15 +22,15 @@ function Toast({ toast, pausado, onExpirar, onFechar }) {
 
   return (
     <motion.div
-      layout
+      layout="position"
       className={`toast ${toast.tipo}`}
-      initial={{ opacity: 0, y: 24, scale: 0.9 }}
-      animate={{ opacity: 1, y: 0, scale: 1 }}
-      exit={{ opacity: 0, x: 80, scale: 0.9, transition: { duration: 0.2 } }}
-      transition={{ type: 'spring', stiffness: 420, damping: 30 }}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
     >
       <span className="toast-icon" aria-hidden="true">
-        {toast.tipo === 'erro' ? <CircleAlert size={18} /> : <CircleCheck size={18} />}
+        {toast.tipo === 'erro' ? <CircleAlert size={17} /> : <CircleCheck size={17} />}
       </span>
       <span className="toast-text">{toast.texto}</span>
       <button type="button" className="toast-close" onClick={() => onFechar(toast.id)} aria-label="Fechar notificação">

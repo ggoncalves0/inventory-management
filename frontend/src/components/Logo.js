@@ -1,13 +1,11 @@
 import { Boxes } from 'lucide-react';
 
-const Logo = ({ compacto = false }) => (
+const Logo = () => (
     <div className="logo">
-        <span className="logo-mark">
-            <Boxes size={compacto ? 16 : 18} strokeWidth={2.2} />
+        <span className="logo-mark" aria-hidden="true">
+            <Boxes size={15} strokeWidth={2.2} />
         </span>
-        <span className="logo-text">
-            Estoque<span className="logo-dot">.</span>
-        </span>
+        Estoque
     </div>
 );
 

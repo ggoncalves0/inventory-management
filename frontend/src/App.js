@@ -3,7 +3,6 @@ import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'r
 import { AnimatePresence, MotionConfig, useIsPresent } from 'motion/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
-import AuroraBackground from './components/AuroraBackground';
 import AuthLayout from './components/AuthLayout';
 import LoginForm from './components/LoginForm';
 import RegisterForm from './components/RegisterForm';
@@ -59,7 +58,6 @@ function App() {
     <MotionConfig reducedMotion="user">
       <AuthProvider>
         <ToastProvider>
-          <AuroraBackground />
           <Router>
             <AnimatedRoutes />
           </Router>

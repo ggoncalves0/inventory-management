@@ -1,7 +1,6 @@
-import { useEffect, useId, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { AnimatePresence, motion, useAnimate } from 'motion/react';
-import { Check, CircleAlert, KeyRound, Lock, User, UserPlus } from 'lucide-react';
+import { Check, CircleAlert, CircleCheck } from 'lucide-react';
 import instance, { mensagemDeErro } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
@@ -34,7 +33,7 @@ export default function RegisterForm() {
     const [usuarioEmUso, setUsuarioEmUso] = useState(false);
     const [carregando, setCarregando] = useState(false);
     const [sucesso, setSucesso] = useState(false);
-    const [escopo, animar] = useAnimate();
+    const escopo = useRef(null);
     const navigate = useNavigate();
     const { login } = useAuth();
     const { mostrarToast } = useToast();
@@ -67,11 +66,6 @@ export default function RegisterForm() {
         return () => clearTimeout(t);
     }, [sucesso, username, senha, login, mostrarToast, navigate]);
 
-    const falhar = (mensagem) => {
-        setErro(mensagem);
-        animar(escopo.current, { x: [0, -10, 10, -7, 7, -3, 3, 0] }, { duration: 0.45 });
-    };
-
     const handleRegister = async (e) => {
         e.preventDefault();
         setErro('');
@@ -79,7 +73,7 @@ export default function RegisterForm() {
 
         const pendente = regras.find((r) => !r.ok);
         if (pendente) {
-            falhar(`Confira: ${pendente.texto.toLowerCase()}.`);
+            setErro(`Confira: ${pendente.texto.toLowerCase()}.`);
             escopo.current?.querySelector(`[name="${pendente.campo}"]`)?.focus();
             return;
         }
@@ -90,7 +84,7 @@ export default function RegisterForm() {
             setSucesso(true);
         } catch (err) {
             if (err.response?.status === 409) setUsuarioEmUso(true);
-            falhar(mensagemDeErro(err, 'Erro ao registrar.'));
+            setErro(mensagemDeErro(err, 'Erro ao registrar.'));
         } finally {
             setCarregando(false);
         }
@@ -99,22 +93,8 @@ export default function RegisterForm() {
     if (sucesso) {
         return (
             <div className="auth-success">
-                <motion.div
-                    className="success-badge"
-                    initial={{ scale: 0, rotate: -90 }}
-                    animate={{ scale: 1, rotate: 0 }}
-                    transition={{ type: 'spring', stiffness: 260, damping: 16 }}
-                >
-                    <motion.svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" strokeLinejoin="round">
-                        <motion.path
-                            d="M5 12.5l4.5 4.5L19 7.5"
-                            initial={{ pathLength: 0 }}
-                            animate={{ pathLength: 1 }}
-                            transition={{ delay: 0.25, duration: 0.45, ease: 'easeOut' }}
-                        />
-                    </motion.svg>
-                </motion.div>
-                <h2>Conta criada!</h2>
+                <CircleCheck size={32} aria-hidden="true" />
+                <h1>Conta criada</h1>
                 <p className="auth-sub">Entrando no painel…</p>
             </div>
         );
@@ -122,14 +102,12 @@ export default function RegisterForm() {
 
     return (
         <form ref={escopo} className="auth-form" onSubmit={handleRegister} noValidate>
-            <span className="eyebrow">Novo cadastro</span>
-            <h2>Crie sua conta</h2>
-            <p className="auth-sub">Leva menos de um minuto.</p>
+            <h1>Criar conta</h1>
+            <p className="auth-sub">Escolha um nome de usuário e uma senha.</p>
 
             <Field
                 label="Usuário"
                 name="username"
-                icon={User}
                 value={username}
                 onChange={(e) => { setUsername(e.target.value); setUsuarioEmUso(false); }}
                 autoComplete="username"
@@ -141,7 +119,6 @@ export default function RegisterForm() {
             <Field
                 label="Senha"
                 name="senha"
-                icon={Lock}
                 type="password"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
@@ -163,7 +140,6 @@ export default function RegisterForm() {
             <Field
                 label="Confirmar senha"
                 name="confirmacao"
-                icon={KeyRound}
                 type="password"
                 value={confirmacao}
                 onChange={(e) => setConfirmacao(e.target.value)}
@@ -177,44 +153,25 @@ export default function RegisterForm() {
                 {regras.map((r) => (
                     <li key={r.campo} id={idRegra(r.campo)} className={r.ok ? 'ok' : ''}>
                         <span className="rule-check" aria-hidden="true">
-                            <AnimatePresence initial={false}>
-                                {r.ok && (
-                                    <motion.span
-                                        initial={{ scale: 0 }}
-                                        animate={{ scale: 1 }}
-                                        exit={{ scale: 0 }}
-                                        transition={{ type: 'spring', stiffness: 500, damping: 22 }}
-                                    >
-                                        <Check size={11} strokeWidth={3} />
-                                    </motion.span>
-                                )}
-                            </AnimatePresence>
+                            {r.ok && <Check size={10} strokeWidth={3} />}
                         </span>
                         {r.texto}
                     </li>
                 ))}
             </ul>
 
-            <AnimatePresence>
-                {erro && (
-                    <motion.p
-                        className="form-message erro"
-                        role="alert"
-                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                        animate={{ opacity: 1, height: 'auto', marginTop: 4 }}
-                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                    >
-                        <CircleAlert size={16} /> {erro}
-                    </motion.p>
-                )}
-            </AnimatePresence>
+            {erro && (
+                <p className="form-message erro" role="alert">
+                    <CircleAlert size={16} aria-hidden="true" /> {erro}
+                </p>
+            )}
 
-            <Button type="submit" icon={UserPlus} className="btn-block" carregando={carregando}>
+            <Button type="submit" className="btn-block" carregando={carregando}>
                 Criar conta
             </Button>
 
             <p className="auth-switch">
-                Já possui uma conta? <Link to="/">Faça login</Link>
+                Já tem conta? <Link to="/">Entrar</Link>
             </p>
         </form>
     );

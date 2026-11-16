@@ -1,13 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion, useAnimate } from 'motion/react';
-import { ArrowRight, CircleAlert, Lock, User } from 'lucide-react';
+import { CircleAlert } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { mensagemDeErro } from '../services/api';
 import Field from './Field';
 import Button from './Button';
-
-const tremer = { x: [0, -10, 10, -7, 7, -3, 3, 0] };
 
 const LoginForm = () => {
     const { login } = useAuth();
@@ -18,19 +15,13 @@ const LoginForm = () => {
     const [senha, setSenha] = useState('');
     const [erro, setErro] = useState('');
     const [carregando, setCarregando] = useState(false);
-    const [escopo, animar] = useAnimate();
-
-    const falhar = (mensagem) => {
-        setErro(mensagem);
-        animar(escopo.current, tremer, { duration: 0.45 });
-    };
 
     const handleLogin = async (e) => {
         e.preventDefault();
         setErro('');
 
         if (!username.trim() || !senha) {
-            falhar('Preencha usuário e senha.');
+            setErro('Preencha usuário e senha.');
             return;
         }
 
@@ -39,7 +30,7 @@ const LoginForm = () => {
             // Após o login o PublicOnlyRoute redireciona para /produtos
             await login(username.trim(), senha);
         } catch (error) {
-            falhar(error.response?.status === 401
+            setErro(error.response?.status === 401
                 ? 'Usuário ou senha incorretos.'
                 : mensagemDeErro(error, 'Não foi possível entrar.'));
             setCarregando(false);
@@ -47,14 +38,12 @@ const LoginForm = () => {
     };
 
     return (
-        <form ref={escopo} className="auth-form" onSubmit={handleLogin} noValidate>
-            <span className="eyebrow">Acesso</span>
-            <h2>Bem-vindo de volta</h2>
-            <p className="auth-sub">Entre com suas credenciais para acessar o painel.</p>
+        <form className="auth-form" onSubmit={handleLogin} noValidate>
+            <h1>Entrar</h1>
+            <p className="auth-sub">Use seu usuário e senha para acessar o estoque.</p>
 
             <Field
                 label="Usuário"
-                icon={User}
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 autoComplete="username"
@@ -64,7 +53,6 @@ const LoginForm = () => {
             />
             <Field
                 label="Senha"
-                icon={Lock}
                 type="password"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
@@ -74,26 +62,18 @@ const LoginForm = () => {
                 autoFocus={!!usuarioInicial}
             />
 
-            <AnimatePresence>
-                {erro && (
-                    <motion.p
-                        className="form-message erro"
-                        role="alert"
-                        initial={{ opacity: 0, height: 0, marginTop: 0 }}
-                        animate={{ opacity: 1, height: 'auto', marginTop: 4 }}
-                        exit={{ opacity: 0, height: 0, marginTop: 0 }}
-                    >
-                        <CircleAlert size={16} /> {erro}
-                    </motion.p>
-                )}
-            </AnimatePresence>
+            {erro && (
+                <p className="form-message erro" role="alert">
+                    <CircleAlert size={16} aria-hidden="true" /> {erro}
+                </p>
+            )}
 
             <Button type="submit" className="btn-block" carregando={carregando}>
-                Entrar <ArrowRight size={17} className="btn-arrow" aria-hidden="true" />
+                Entrar
             </Button>
 
             <p className="auth-switch">
-                Não possui uma conta? <Link to="/register">Registre-se</Link>
+                Não tem conta? <Link to="/register">Criar conta</Link>
             </p>
         </form>
     );

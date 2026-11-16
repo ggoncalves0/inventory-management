@@ -52,7 +52,8 @@ function ModalConteudo({ onClose, titulo, children, largura }) {
             className="modal-overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0, transition: { duration: 0.2 } }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.12 }}
             onMouseDown={(e) => e.target === e.currentTarget && onClose()}
         >
             <motion.div
@@ -62,12 +63,12 @@ function ModalConteudo({ onClose, titulo, children, largura }) {
                 aria-label={titulo}
                 className="modal-box"
                 style={{ maxWidth: largura }}
-                initial={{ opacity: 0, y: 32, scale: 0.94 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16, scale: 0.97, transition: { duration: 0.18 } }}
-                transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.12 }}
             >
-                <button className="modal-close" onClick={onClose} aria-label="Fechar">
+                <button type="button" className="modal-close" onClick={onClose} aria-label="Fechar">
                     <X size={18} />
                 </button>
                 {children}

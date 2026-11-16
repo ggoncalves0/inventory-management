@@ -1,6 +1,5 @@
-import { useState } from 'react';
-import { AnimatePresence, motion, useAnimate } from 'motion/react';
-import { Banknote, CircleAlert, Layers, Package, PackagePlus, Save, Tag } from 'lucide-react';
+import { useRef, useState } from 'react';
+import { CircleAlert } from 'lucide-react';
 import instance, { mensagemDeErro } from '../services/api';
 import Modal from './Modal';
 import Field from './Field';
@@ -66,14 +65,13 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
     const [erros, setErros] = useState({});
     const [erro, setErro] = useState('');
     const [salvando, setSalvando] = useState(false);
-    const [escopo, animar] = useAnimate();
+    const escopo = useRef(null);
 
     const alterar = (campo, valor) => {
         setValores((atual) => ({ ...atual, [campo]: valor }));
         setErros((atual) => (atual[campo] ? { ...atual, [campo]: undefined } : atual));
     };
 
-    const tremer = () => animar(escopo.current, { x: [0, -8, 8, -5, 5, 0] }, { duration: 0.4 });
     const focar = (campo) => escopo.current?.querySelector(`[name="${campo}"]`)?.focus();
 
     const handleSubmit = async (e) => {
@@ -85,7 +83,6 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
         if (primeiro) {
             setErros(novos);
             focar(primeiro);
-            tremer();
             return;
         }
 
@@ -114,7 +111,6 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
             } else {
                 setErro(mensagem);
             }
-            tremer();
             setSalvando(false);
         }
     };
@@ -122,19 +118,13 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
     return (
         <form ref={escopo} onSubmit={handleSubmit} noValidate className="product-form">
             <div className="modal-header">
-                <span className="modal-header-icon">
-                    {editando ? <Package size={20} /> : <PackagePlus size={20} />}
-                </span>
-                <div>
-                    <h3>{editando ? 'Editar produto' : 'Novo produto'}</h3>
-                    <p>{editando ? `Alterando o item #${produto.id}` : 'Preencha os dados do item.'}</p>
-                </div>
+                <h2>{editando ? 'Editar produto' : 'Novo produto'}</h2>
+                {editando && <p>Item #{produto.id}</p>}
             </div>
 
             <Field
                 label="Nome"
                 name="nome"
-                icon={Package}
                 value={valores.nome}
                 onChange={(e) => alterar('nome', e.target.value)}
                 maxLength={100}
@@ -144,7 +134,6 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
             <Field
                 label="Categoria"
                 name="categoria"
-                icon={Tag}
                 value={valores.categoria}
                 onChange={(e) => alterar('categoria', e.target.value)}
                 maxLength={50}
@@ -159,7 +148,6 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
                 <Field
                     label="Quantidade"
                     name="quantidade"
-                    icon={Layers}
                     inputMode="numeric"
                     value={valores.quantidade}
                     onChange={(e) => alterar('quantidade', somenteDigitos(e.target.value).slice(0, 10))}
@@ -167,8 +155,8 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
                 />
                 <Field
                     label="Preço (R$)"
+                    placeholder="0,00"
                     name="preco"
-                    icon={Banknote}
                     inputMode="decimal"
                     value={valores.preco}
                     onChange={(e) => alterar('preco', somenteDecimal(e.target.value).slice(0, 13))}
@@ -176,24 +164,16 @@ function ProductForm({ produto: produtoInicial, onClose, onSaved, categorias }) 
                 />
             </div>
 
-            <AnimatePresence>
-                {erro && (
-                    <motion.p
-                        className="form-message erro"
-                        role="alert"
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        exit={{ opacity: 0, height: 0 }}
-                    >
-                        <CircleAlert size={16} /> {erro}
-                    </motion.p>
-                )}
-            </AnimatePresence>
+            {erro && (
+                <p className="form-message erro" role="alert">
+                    <CircleAlert size={16} aria-hidden="true" /> {erro}
+                </p>
+            )}
 
             <div className="modal-actions">
                 <Button type="button" variante="ghost" onClick={onClose} disabled={salvando}>Cancelar</Button>
-                <Button type="submit" icon={editando ? Save : PackagePlus} carregando={salvando}>
-                    {editando ? 'Salvar alterações' : 'Cadastrar'}
+                <Button type="submit" carregando={salvando}>
+                    {editando ? 'Salvar alterações' : 'Cadastrar produto'}
                 </Button>
             </div>
         </form>
