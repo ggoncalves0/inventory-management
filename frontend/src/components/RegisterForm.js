@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useId, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { AnimatePresence, motion, useAnimate } from 'motion/react';
 import { Check, CircleAlert, KeyRound, Lock, User, UserPlus } from 'lucide-react';
 import instance, { mensagemDeErro } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Field from './Field';
 import Button from './Button';
@@ -29,24 +30,42 @@ export default function RegisterForm() {
     const [senha, setSenha] = useState('');
     const [confirmacao, setConfirmacao] = useState('');
     const [erro, setErro] = useState('');
+    const [tentou, setTentou] = useState(false);
+    const [usuarioEmUso, setUsuarioEmUso] = useState(false);
     const [carregando, setCarregando] = useState(false);
     const [sucesso, setSucesso] = useState(false);
     const [escopo, animar] = useAnimate();
     const navigate = useNavigate();
+    const { login } = useAuth();
     const { mostrarToast } = useToast();
+    const idRegras = useId();
 
     const forca = forcaDaSenha(senha);
     const regras = useMemo(() => [
-        { ok: USERNAME_RE.test(username.trim()), texto: 'Usuário com 3–50 letras, números, ".", "-" ou "_"' },
-        { ok: senha.length >= SENHA_MIN, texto: `Senha com pelo menos ${SENHA_MIN} caracteres` },
-        { ok: !!senha && senha === confirmacao, texto: 'As senhas coincidem' },
+        { campo: 'username', ok: USERNAME_RE.test(username.trim()), texto: 'Usuário com 3–50 letras, números, ".", "-" ou "_"' },
+        { campo: 'senha', ok: senha.length >= SENHA_MIN, texto: `Senha com pelo menos ${SENHA_MIN} caracteres` },
+        { campo: 'confirmacao', ok: !!senha && senha === confirmacao, texto: 'As senhas coincidem' },
     ], [username, senha, confirmacao]);
 
+    // Depois da primeira tentativa de envio, cada campo fica marcado enquanto a regra dele não for cumprida
+    const invalido = (campo) => tentou && !regras.find((r) => r.campo === campo).ok;
+    const idRegra = (campo) => `${idRegras}-${campo}`;
+
+    // Conta criada: entra direto no painel. Se o login falhar, vai para a tela de login já com o usuário.
     useEffect(() => {
         if (!sucesso) return;
-        const t = setTimeout(() => navigate('/'), 1600);
+        const nome = username.trim();
+        const t = setTimeout(async () => {
+            try {
+                await login(nome, senha);
+                mostrarToast('sucesso', 'Conta criada. Boas-vindas ao painel!');
+            } catch {
+                mostrarToast('sucesso', 'Conta criada! Faça login para continuar.');
+                navigate('/', { state: { username: nome } });
+            }
+        }, 1200);
         return () => clearTimeout(t);
-    }, [sucesso, navigate]);
+    }, [sucesso, username, senha, login, mostrarToast, navigate]);
 
     const falhar = (mensagem) => {
         setErro(mensagem);
@@ -56,10 +75,12 @@ export default function RegisterForm() {
     const handleRegister = async (e) => {
         e.preventDefault();
         setErro('');
+        setTentou(true);
 
         const pendente = regras.find((r) => !r.ok);
         if (pendente) {
             falhar(`Confira: ${pendente.texto.toLowerCase()}.`);
+            escopo.current?.querySelector(`[name="${pendente.campo}"]`)?.focus();
             return;
         }
 
@@ -67,8 +88,8 @@ export default function RegisterForm() {
         try {
             await instance.post('/register', { username: username.trim(), senha });
             setSucesso(true);
-            mostrarToast('sucesso', 'Conta criada! Faça login para continuar.');
         } catch (err) {
+            if (err.response?.status === 409) setUsuarioEmUso(true);
             falhar(mensagemDeErro(err, 'Erro ao registrar.'));
         } finally {
             setCarregando(false);
@@ -94,7 +115,7 @@ export default function RegisterForm() {
                     </motion.svg>
                 </motion.div>
                 <h2>Conta criada!</h2>
-                <p className="auth-sub">Redirecionando para o login…</p>
+                <p className="auth-sub">Entrando no painel…</p>
             </div>
         );
     }
@@ -107,21 +128,27 @@ export default function RegisterForm() {
 
             <Field
                 label="Usuário"
+                name="username"
                 icon={User}
                 value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                onChange={(e) => { setUsername(e.target.value); setUsuarioEmUso(false); }}
                 autoComplete="username"
                 maxLength={50}
+                invalido={invalido('username') || usuarioEmUso}
+                aria-describedby={idRegra('username')}
                 autoFocus
             />
             <Field
                 label="Senha"
+                name="senha"
                 icon={Lock}
                 type="password"
                 value={senha}
                 onChange={(e) => setSenha(e.target.value)}
                 autoComplete="new-password"
                 maxLength={72}
+                invalido={invalido('senha')}
+                aria-describedby={idRegra('senha')}
             />
 
             <div className={`strength level-${forca}`} aria-live="polite">
@@ -135,18 +162,21 @@ export default function RegisterForm() {
 
             <Field
                 label="Confirmar senha"
+                name="confirmacao"
                 icon={KeyRound}
                 type="password"
                 value={confirmacao}
                 onChange={(e) => setConfirmacao(e.target.value)}
                 autoComplete="new-password"
                 maxLength={72}
+                invalido={invalido('confirmacao')}
+                aria-describedby={idRegra('confirmacao')}
             />
 
             <ul className="rules">
                 {regras.map((r) => (
-                    <li key={r.texto} className={r.ok ? 'ok' : ''}>
-                        <span className="rule-check">
+                    <li key={r.campo} id={idRegra(r.campo)} className={r.ok ? 'ok' : ''}>
+                        <span className="rule-check" aria-hidden="true">
                             <AnimatePresence initial={false}>
                                 {r.ok && (
                                     <motion.span

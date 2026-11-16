@@ -14,7 +14,7 @@
 
   --text: #eceef5;
   --text-muted: #8c90a6;
-  --text-faint: #5d6178;
+  --text-faint: #8a8fa5; /* mínimo AA (4,5:1) sobre os painéis: não escurecer */
 
   --violet: #8b5cf6;
   --violet-soft: #a78bfa;
@@ -25,6 +25,8 @@
   --danger: #f43f5e;
 
   --gradient: linear-gradient(135deg, #8b5cf6 0%, #6366f1 45%, #22d3ee 100%);
+  /* Fundos com texto branco: sem o ciano, que derruba o contraste para menos de 4,5:1 */
+  --gradient-action: linear-gradient(135deg, #7c3aed 0%, #4f46e5 100%);
   --gradient-text: linear-gradient(110deg, #c4b5fd 0%, #818cf8 40%, #67e8f9 80%);
 
   --font-body: 'Geist', 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -70,7 +72,8 @@ body {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
   color: inherit;
 }
@@ -313,8 +316,7 @@ kbd {
 
 .btn-primary {
   color: #fff;
-  background: var(--gradient);
-  background-size: 160% 160%;
+  background: var(--gradient-action);
   box-shadow: 0 10px 30px -10px rgba(139, 92, 246, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.25);
 }
 
@@ -350,7 +352,7 @@ kbd {
 
 .btn-danger {
   color: #fff;
-  background: linear-gradient(135deg, #f43f5e, #e11d48);
+  background: linear-gradient(135deg, #e11d48, #be123c);
   box-shadow: 0 10px 30px -10px rgba(244, 63, 94, 0.8);
 }
 
@@ -380,7 +382,8 @@ kbd {
   transform: translateX(4px);
 }
 
-.spin {
+.spin,
+.btn.girando svg {
   animation: spin 0.8s linear infinite;
 }
 
@@ -394,6 +397,11 @@ kbd {
 .field {
   position: relative;
   margin-bottom: 0.9rem;
+}
+
+/* referência do ícone, do label e do botão de senha (a mensagem de erro fica fora) */
+.field-control {
+  position: relative;
 }
 
 .field input {
@@ -491,6 +499,20 @@ kbd {
   box-shadow: 0 0 0 4px rgba(244, 63, 94, 0.1);
 }
 
+.field-erro {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.4rem 0 0 0.1rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #fda4af;
+}
+
+.field-erro svg {
+  flex-shrink: 0;
+}
+
 .field-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -536,13 +558,23 @@ kbd {
   right: 1.25rem;
   bottom: 1.25rem;
   z-index: 2000;
+  width: min(380px, calc(100vw - 2.5rem));
+  /* a área vazia da pilha não bloqueia cliques; só os toasts recebem o ponteiro */
+  pointer-events: none;
+}
+
+.toast-grupo {
   display: flex;
   flex-direction: column;
   gap: 0.6rem;
-  width: min(380px, calc(100vw - 2.5rem));
+}
+
+.toast-grupo:not(:empty) + .toast-grupo:not(:empty) {
+  margin-top: 0.6rem;
 }
 
 .toast {
+  pointer-events: auto;
   position: relative;
   display: flex;
   align-items: center;
@@ -611,6 +643,10 @@ kbd {
 
 .toast.erro .toast-progress {
   background: linear-gradient(90deg, var(--rose), var(--violet));
+}
+
+.toast-stack.pausado .toast-progress {
+  animation-play-state: paused;
 }
 
 @keyframes toast-progress {
@@ -784,6 +820,26 @@ kbd {
 
 @keyframes breathe {
   50% { transform: scale(0.92); }
+}
+
+/* =========================================================
+   Telas de toque: alvos com pelo menos ~40px
+   ========================================================= */
+@media (pointer: coarse) {
+  .btn-sm {
+    min-height: 40px;
+  }
+
+  .field-toggle,
+  .modal-close {
+    width: 40px;
+    height: 40px;
+  }
+
+  .toast-close {
+    width: 36px;
+    height: 36px;
+  }
 }
 
 /* =========================================================

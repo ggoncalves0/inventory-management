@@ -1,7 +1,8 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import App from './App';
+// O CSS global precisa vir antes do App: os CSS dos componentes entram depois e podem sobrescrevê-lo.
 import './styles/base.css';
+import App from './App';
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 

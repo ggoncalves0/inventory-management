@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { AnimatePresence, motion, useAnimate } from 'motion/react';
 import { ArrowRight, CircleAlert, Lock, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -11,7 +11,10 @@ const tremer = { x: [0, -10, 10, -7, 7, -3, 3, 0] };
 
 const LoginForm = () => {
     const { login } = useAuth();
-    const [username, setUsername] = useState('');
+    // Vindo do cadastro (quando o login automático falha), o usuário já chega preenchido
+    const { state } = useLocation();
+    const usuarioInicial = state?.username ?? '';
+    const [username, setUsername] = useState(usuarioInicial);
     const [senha, setSenha] = useState('');
     const [erro, setErro] = useState('');
     const [carregando, setCarregando] = useState(false);
@@ -57,7 +60,7 @@ const LoginForm = () => {
                 autoComplete="username"
                 maxLength={50}
                 invalido={!!erro && !username.trim()}
-                autoFocus
+                autoFocus={!usuarioInicial}
             />
             <Field
                 label="Senha"
@@ -68,6 +71,7 @@ const LoginForm = () => {
                 autoComplete="current-password"
                 maxLength={72}
                 invalido={!!erro && !senha}
+                autoFocus={!!usuarioInicial}
             />
 
             <AnimatePresence>

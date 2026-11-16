@@ -3,8 +3,10 @@ import { motion } from 'motion/react';
 
 // Cartão com um brilho que segue o cursor (via variáveis CSS --mx / --my).
 // Atualiza no máximo uma vez por frame para não sobrecarregar o navegador.
-const SpotlightCard = forwardRef(({ className = '', children, onMouseMove, ...props }, ref) => {
+// `as="button"` quando o cartão é clicável.
+const SpotlightCard = forwardRef(({ as = 'div', className = '', children, onMouseMove, ...props }, ref) => {
     const frame = useRef(0);
+    const Componente = as === 'button' ? motion.button : motion.div;
 
     const moverBrilho = (e) => {
         const alvo = e.currentTarget;
@@ -21,9 +23,9 @@ const SpotlightCard = forwardRef(({ className = '', children, onMouseMove, ...pr
     };
 
     return (
-        <motion.div ref={ref} className={`spotlight ${className}`} onMouseMove={moverBrilho} {...props}>
+        <Componente ref={ref} className={`spotlight ${className}`} onMouseMove={moverBrilho} {...props}>
             {children}
-        </motion.div>
+        </Componente>
     );
 });
 
