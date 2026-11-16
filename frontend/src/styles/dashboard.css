@@ -1,5 +1,7 @@
 .dashboard {
   min-height: 100vh;
+  /* barra superior: 56px + 1px de borda; o cabeçalho da tabela fica preso logo abaixo dela */
+  --altura-topo: 57px;
 }
 
 /* ---------- Barra superior ---------- */
@@ -102,7 +104,7 @@
   position: relative;
   max-width: 1200px;
   margin: 0 auto;
-  padding: 2rem 1.5rem 1.75rem;
+  padding: 1.25rem 1.5rem 1.5rem;
 }
 
 .faixa .stats-grid {
@@ -112,22 +114,30 @@
 .dashboard-content {
   max-width: 1200px;
   margin: 0 auto;
-  padding: 1.75rem 1.5rem 3rem;
+  padding: 1.5rem 1.5rem 3rem;
   display: flex;
   flex-direction: column;
 }
 
 .page-head {
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+/* título e "atualizado às" na mesma linha: o título não precisa de uma linha inteira só para ele */
+.page-titulo {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.15rem 1rem;
 }
 
 .page-head h1 {
   font-family: var(--font-display);
-  font-size: 2.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0.02em;
@@ -135,9 +145,38 @@
 }
 
 .page-sub {
-  margin: 0.35rem 0 0;
+  margin: 0;
   font-size: 0.8125rem;
   color: var(--text-muted);
+}
+
+/* ---------- Resumo: indicadores 2×2 e gráfico lado a lado (telas largas) ---------- */
+.resumo.com-grafico {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+  gap: 1rem;
+}
+
+/* as duas linhas de indicadores esticam até a altura do gráfico */
+.resumo.com-grafico .stats-grid {
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+}
+
+/* indicadores um pouco mais compactos ao lado do gráfico: cada pixel aqui empurra a lista para baixo */
+.resumo.com-grafico .stat-card {
+  padding: 0.75rem 1.1rem;
+}
+
+.resumo.com-grafico .stat-value {
+  font-size: 2rem;
+}
+
+/* a partir de 1200px o gráfico ganha mais largura: nomes como "Equipamentos de proteção individual (EPI)" cabem inteiros */
+@media (min-width: 1200px) {
+  .resumo.com-grafico {
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.3fr);
+  }
 }
 
 /* ---------- Indicadores: uma faixa só, divididos por linhas finas ---------- */
@@ -252,12 +291,42 @@ button.stat-card:focus-visible {
 
 /* ---------- Gráfico: valor por categoria ---------- */
 .chart-card {
-  margin-bottom: 1.75rem;
+  margin: 0;
   padding: 1rem 1.1rem 1rem;
   border-radius: var(--radius-lg);
   border: 1px solid var(--border);
   background-color: var(--surface);
   box-shadow: var(--shadow-sm);
+}
+
+/* telas estreitas: o gráfico vem depois da lista */
+.dashboard-content > .chart-card {
+  margin-top: 1.75rem;
+}
+
+/* Na faixa, ao lado dos indicadores: uma coluna só, linhas de altura fixa e espaço reservado para
+   as 5 linhas (4 categorias + "Outras") — com ou sem dados, a altura não muda e a lista não pula. */
+.faixa .cat-lista {
+  grid-template-columns: 1fr;
+  grid-template-rows: none;
+  grid-auto-flow: row;
+  align-content: start;
+  gap: 0;
+  min-height: calc(5 * 30px);
+}
+
+.faixa .cat-linha,
+.faixa .cat-esqueleto {
+  min-height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+/* nome numa linha só na faixa (o completo fica no title e no nome acessível da linha) */
+.faixa .cat-nome {
+  display: block;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 /* no cartão, o título de seção divide a linha com o total */
@@ -294,7 +363,8 @@ button.stat-card:focus-visible {
 
 .cat-linha {
   display: grid;
-  grid-template-columns: minmax(90px, 9rem) 1fr 5.5rem 2.75rem;
+  /* nome com mais espaço que a barra: nomes longos ("Equipamentos de proteção…") eram cortados */
+  grid-template-columns: minmax(7rem, 1.4fr) minmax(2.5rem, 1fr) 5.5rem 2.75rem;
   align-items: center;
   gap: 0.75rem;
   width: 100%;
@@ -315,10 +385,36 @@ button.cat-linha[aria-pressed='true'] {
   background: var(--accent-subtle);
 }
 
+/* até duas linhas; o nome completo fica no title da linha */
 .cat-nome {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
   overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+/* esqueleto enquanto carrega: mesma altura das linhas de verdade, então nada pula quando os dados chegam */
+.cat-esqueleto {
+  display: grid;
+  grid-template-columns: minmax(7rem, 1.4fr) minmax(2.5rem, 1fr);
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 32px;
+  padding: 0 0.4rem;
+}
+
+.cat-esqueleto span {
+  height: 8px;
+  border-radius: 2px;
+  background: var(--surface-sunken);
+  animation: esmaecer 0.9s ease-in-out infinite alternate;
+}
+
+.cat-esqueleto span:first-child {
+  width: 70%;
 }
 
 /* trilho fino com a ponta da barra arredondada; uma cor só (zinco), laranja na categoria filtrada */
@@ -360,6 +456,16 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   scroll-margin-top: 4.5rem; /* ao rolar até a lista, o topo não fica sob a barra fixa */
 }
 
+/* alvo do "Pular para a lista" (tabIndex -1): rola sem ficar sob a barra e não ganha contorno,
+   que não é um controle — o próximo Tab já cai na busca */
+.panel > .secao {
+  scroll-margin-top: 5rem;
+}
+
+.panel > .secao:focus {
+  outline: none;
+}
+
 .toolbar {
   display: flex;
   gap: 0.5rem;
@@ -379,8 +485,7 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   border-radius: var(--radius);
   border: 1px solid var(--border-strong);
   background: var(--surface);
-  outline: none;
-  transition: border-color 0.15s, box-shadow 0.15s;
+  transition: border-color 0.15s;
 }
 
 .search input::-webkit-search-cancel-button {
@@ -391,9 +496,12 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   color: var(--text-faint);
 }
 
-.search input:focus {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-subtle);
+/* foco de 2px na cor de texto do destaque, como nos botões e nos campos do formulário */
+.search input:focus-visible,
+.campo-select select:focus-visible {
+  border-color: var(--accent-text);
+  outline: 2px solid var(--accent-text);
+  outline-offset: -1px;
 }
 
 .search-icon {
@@ -454,7 +562,6 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   border: 1px solid var(--border-strong);
   background: var(--surface);
   font-size: 0.875rem;
-  outline: none;
   cursor: pointer;
 }
 
@@ -462,11 +569,6 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
 .categoria-select.ativo select {
   border-color: var(--accent);
   background-color: var(--accent-subtle);
-}
-
-.campo-select select:focus-visible {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
 .sort-seta {
@@ -675,7 +777,7 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 0.5rem;
+  gap: 0.4rem;
 }
 
 .td-preco {
@@ -724,8 +826,9 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   background: var(--danger-text);
 }
 
+/* largura de "12.000": as barras ficam alinhadas mesmo com quantidades de 5 dígitos */
 .stock-num {
-  min-width: 3ch;
+  min-width: 5.5ch;
   text-align: right;
 }
 
@@ -823,12 +926,6 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  /* tablet e celular: a lista vem antes do gráfico */
-  .chart-card {
-    order: 1;
-    margin: 1.75rem 0 0;
-  }
-
   /* com o gráfico depois da lista, "01 · 03 · 02" fica fora de ordem: some a numeração */
   .secao-num {
     display: none;
@@ -844,7 +941,7 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   }
 
   .cat-linha {
-    grid-template-columns: minmax(80px, 7.5rem) 1fr 4.75rem 2.5rem;
+    grid-template-columns: minmax(6rem, 1.3fr) minmax(2rem, 1fr) 4.75rem 2.5rem;
     gap: 0.5rem;
   }
 }
@@ -964,11 +1061,11 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
   }
 
   .page-head h1 {
-    font-size: 1.9rem;
+    font-size: 1.5rem;
   }
 
   .faixa-inner {
-    padding: 1.25rem 1rem;
+    padding: 1rem 1rem 1.25rem;
   }
 
   .stats-grid {
@@ -1033,13 +1130,66 @@ button.cat-linha[aria-pressed='true'] .cat-trilho span {
     font-size: 1rem;
   }
 
-  .cat-linha {
+  .cat-linha,
+  .faixa .cat-linha {
     min-height: 40px;
+  }
+
+  .faixa .cat-lista {
+    min-height: calc(5 * 40px);
   }
 
 
   .search-clear {
     width: 32px;
     height: 32px;
+  }
+}
+
+/* Telas largas: a tabela cabe sem rolagem lateral, então pode ficar sem overflow — e, sem overflow,
+   o cabeçalho das colunas consegue ficar preso logo abaixo da barra superior ao rolar uma lista longa.
+   (Entre 901 e 1000px o overflow continua: é a margem de segurança antes de a tabela virar cartões.) */
+@media (min-width: 1001px) {
+  .table {
+    overflow: visible;
+  }
+
+  .table-head {
+    position: sticky;
+    top: var(--altura-topo);
+    z-index: 5;
+  }
+}
+
+/* Alto contraste do Windows (forced-colors): o sistema troca os fundos pelas cores dele, e as barras
+   (que são fundos) sumiriam. Barras em CanvasText, separadores dos indicadores como borda e item
+   filtrado com o contorno de destaque do sistema. */
+@media (forced-colors: active) {
+  .cat-trilho,
+  .stock-bar {
+    forced-color-adjust: none;
+    background: Canvas;
+    outline: 1px solid GrayText;
+  }
+
+  .cat-trilho span,
+  .stock-bar span,
+  .row.baixo .stock-bar span,
+  button.cat-linha[aria-pressed='true'] .cat-trilho span {
+    background: CanvasText;
+  }
+
+  .stats-grid {
+    gap: 0;
+  }
+
+  .stats-grid .stat-card {
+    border: 1px solid CanvasText;
+  }
+
+  button.cat-linha[aria-pressed='true'],
+  .stats-grid .stat-card.ativo {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
   }
 }

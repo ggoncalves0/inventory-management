@@ -6,6 +6,11 @@ const StatCard = ({ rotulo, valor, detalhe, titulo, alerta = false, onClick, ati
     const interativo = !!onClick;
     const Elemento = interativo ? 'button' : 'div';
     const classes = ['stat-card', interativo && 'interativo', ativo && 'ativo', alerta && 'alerta'].filter(Boolean).join(' ');
+    // Lido de uma vez, o conteúdo virava "Estoque baixo 2 1 esgotado Ver itens" (dois números soltos).
+    // O nome acessível contém todo o texto visível, então comandos de voz ("clicar em Ver itens") seguem valendo.
+    const nomeAcessivel = interativo
+        ? `${rotulo}: ${valor}${detalhe ? ` (${detalhe})` : ''}. ${acao ?? ''}`.trim()
+        : undefined;
 
     return (
         <Elemento
@@ -13,6 +18,7 @@ const StatCard = ({ rotulo, valor, detalhe, titulo, alerta = false, onClick, ati
             className={classes}
             onClick={onClick}
             aria-pressed={interativo ? ativo : undefined}
+            aria-label={nomeAcessivel}
         >
             <span className="stat-label">{rotulo}</span>
             <strong className="stat-value" title={titulo}>{valor}</strong>

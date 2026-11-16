@@ -6,6 +6,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import Field from './Field';
 import Button from './Button';
+import useTituloDaPagina from '../utils/useTituloDaPagina';
 
 // Mesmas regras do backend (validators.py)
 const USERNAME_RE = /^[A-Za-z0-9_.-]{3,50}$/;
@@ -25,6 +26,7 @@ function forcaDaSenha(senha) {
 }
 
 export default function RegisterForm() {
+    useTituloDaPagina('Criar conta');
     const [username, setUsername] = useState('');
     const [senha, setSenha] = useState('');
     const [confirmacao, setConfirmacao] = useState('');

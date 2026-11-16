@@ -14,6 +14,8 @@ import ThemeToggle from './ThemeToggle';
 import ProductRow, { ESTOQUE_BAIXO } from './ProductRow';
 import ConfirmModal from './ConfirmModal';
 import ProductFormModal from './ProductFormModal';
+import useMediaQuery from '../utils/useMediaQuery';
+import useTituloDaPagina from '../utils/useTituloDaPagina';
 import '../styles/dashboard.css';
 
 
@@ -24,8 +26,11 @@ const hora = new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digi
 // A partir de R$ 100 mil o valor completo não cabe no indicador: vira "R$ 1,26 mi" (o exato fica no title)
 const formatarValorEstoque = (v) => (v >= 100000 ? moedaCompacta.format(v) : moeda.format(v));
 
-// O gráfico mostra as 5 categorias de maior valor; o resto vira uma linha "Outras"
-const MAX_LINHAS = 5;
+// O gráfico mostra as 4 categorias de maior valor; o resto vira uma linha "Outras".
+// Com 5 linhas ele tem a altura dos indicadores 2×2 ao lado dele, na faixa.
+const MAX_LINHAS = 4;
+// Acima disso o gráfico fica na faixa, ao lado dos indicadores; abaixo, depois da lista (mesmo corte do CSS)
+const TELA_LARGA = '(min-width: 1001px)';
 
 const normalizar = (t) => String(t).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -71,6 +76,9 @@ const ProductList = () => {
     const [excluindo, setExcluindo] = useState(false);
     const buscaRef = useRef(null);
     const painelRef = useRef(null);
+    const inventarioRef = useRef(null);
+    const largo = useMediaQuery(TELA_LARGA);
+    useTituloDaPagina('Produtos');
     // Mantém o nome no modal de exclusão enquanto ele anima a saída
     const ultimoExcluir = useRef(null);
     if (produtoExcluir) ultimoExcluir.current = produtoExcluir;
@@ -189,6 +197,12 @@ const ProductList = () => {
         setCategoriaAtiva((atual) => (atual === nome ? 'Todas' : nome));
     }, []);
 
+    // "Pular para a lista": leva o foco direto ao título da lista, sem passar pelo resumo e pelo gráfico
+    const pularParaLista = (e) => {
+        e.preventDefault();
+        inventarioRef.current?.focus();
+    };
+
     const limparFiltros = () => {
         setBusca('');
         setCategoriaAtiva('Todas');
@@ -225,6 +239,19 @@ const ProductList = () => {
     const semDados = carregando || (erroCarga && produtos.length === 0);
     const falhouSemDados = !carregando && erroCarga && produtos.length === 0;
     const PENDENTE = '—';
+    // Gráfico: esqueleto enquanto carrega (reserva o espaço), escondido se não há valor em estoque
+    const temGrafico = carregando || estatisticas.valor > 0;
+    const graficoNaFaixa = largo && temGrafico;
+    const grafico = (
+        <CategoryValueChart
+            linhas={linhasValor}
+            total={estatisticas.valor}
+            categoriaAtiva={categoriaAtiva}
+            onSelecionar={selecionarCategoria}
+            carregando={carregando}
+            numero="01"
+        />
+    );
 
     const { baixo, esgotados } = estatisticas;
     let detalheBaixo = `até ${ESTOQUE_BAIXO} unidades`;
@@ -233,6 +260,9 @@ const ProductList = () => {
     return (
         // motion.div só para a transição de saída ao trocar de rota (sair)
         <motion.div className="dashboard" exit={{ opacity: 0, transition: { duration: 0.15 } }}>
+            {/* Primeiro item do Tab: invisível até receber foco */}
+            <a className="pular" href="#secao-inventario" onClick={pularParaLista}>Pular para a lista de produtos</a>
+
             <header className="topbar">
                 <div className="topbar-inner">
                     <Logo />
@@ -247,191 +277,194 @@ const ProductList = () => {
                 </div>
             </header>
 
-            {/* Faixa de comando: sempre escura (color-scheme: dark no CSS), nos dois temas */}
-            <div className="faixa">
-                <div className="faixa-inner">
-                <section className="page-head">
-                    <div>
-                        <h1>Produtos</h1>
-                        <p className="page-sub">
-                            {carregando && 'Carregando o estoque…'}
-                            {!carregando && (atualizadoEm
-                                ? `Estoque atualizado às ${hora.format(atualizadoEm)}`
-                                : 'Não foi possível carregar o estoque.')}
-                        </p>
-                    </div>
-                    {isAdmin && (
-                        <Button icon={Plus} onClick={abrirNovo}>Novo produto</Button>
-                    )}
-                </section>
+            {/* Título e indicadores dentro do <main>: quem navega por regiões não pula o resumo */}
+            <main>
+                {/* Faixa de comando: sempre escura (color-scheme: dark no CSS), nos dois temas */}
+                <div className="faixa">
+                    <div className="faixa-inner">
+                        <section className="page-head">
+                            <div className="page-titulo">
+                                <h1>Produtos</h1>
+                                <p className="page-sub">
+                                    {carregando && 'Carregando o estoque…'}
+                                    {!carregando && (atualizadoEm
+                                        ? `Estoque atualizado às ${hora.format(atualizadoEm)}`
+                                        : 'Não foi possível carregar o estoque.')}
+                                </p>
+                            </div>
+                            {isAdmin && (
+                                <Button icon={Plus} onClick={abrirNovo}>Novo produto</Button>
+                            )}
+                        </section>
 
-                <h2 className="secao" id="secao-resumo"><span className="secao-num">01</span>Resumo</h2>
-                <section className={`stats-grid ${semDados ? 'pendente' : ''}`} aria-labelledby="secao-resumo" aria-busy={carregando || undefined}>
-                    <StatCard rotulo="Produtos" valor={semDados ? PENDENTE : inteiro.format(estatisticas.total)}
-                        detalhe={semDados ? undefined : `${categorias.length} ${categorias.length === 1 ? 'categoria' : 'categorias'}`} />
-                    <StatCard rotulo="Unidades" valor={semDados ? PENDENTE : inteiro.format(estatisticas.unidades)} />
-                    <StatCard rotulo="Valor em estoque" valor={semDados ? PENDENTE : formatarValorEstoque(estatisticas.valor)}
-                        titulo={semDados ? undefined : moeda.format(estatisticas.valor)}
-                        detalhe={semDados ? undefined : 'quantidade × preço'} />
-                    <StatCard rotulo="Estoque baixo" valor={semDados ? PENDENTE : inteiro.format(baixo)}
-                        detalhe={semDados ? undefined : detalheBaixo}
-                        alerta={!semDados && baixo > 0}
-                        onClick={!semDados && baixo > 0 ? alternarSomenteBaixo : undefined}
-                        ativo={somenteBaixo}
-                        acao={!semDados && baixo > 0 ? (somenteBaixo ? 'Limpar filtro' : 'Ver itens') : undefined} />
-                </section>
+                        {/* Telas largas: indicadores 2×2 e gráfico lado a lado, para a lista caber na primeira tela */}
+                        <div className={`resumo ${graficoNaFaixa ? 'com-grafico' : ''}`}>
+                            <section className={`stats-grid ${semDados ? 'pendente' : ''}`} aria-label="Resumo do estoque" aria-busy={carregando || undefined}>
+                                <StatCard rotulo="Produtos" valor={semDados ? PENDENTE : inteiro.format(estatisticas.total)}
+                                    detalhe={semDados ? undefined : `${categorias.length} ${categorias.length === 1 ? 'categoria' : 'categorias'}`} />
+                                <StatCard rotulo="Unidades" valor={semDados ? PENDENTE : inteiro.format(estatisticas.unidades)} />
+                                <StatCard rotulo="Valor em estoque" valor={semDados ? PENDENTE : formatarValorEstoque(estatisticas.valor)}
+                                    titulo={semDados ? undefined : moeda.format(estatisticas.valor)}
+                                    detalhe={semDados ? undefined : 'quantidade × preço'} />
+                                <StatCard rotulo="Estoque baixo" valor={semDados ? PENDENTE : inteiro.format(baixo)}
+                                    detalhe={semDados ? undefined : detalheBaixo}
+                                    alerta={!semDados && baixo > 0}
+                                    onClick={!semDados && baixo > 0 ? alternarSomenteBaixo : undefined}
+                                    ativo={somenteBaixo}
+                                    acao={!semDados && baixo > 0 ? (somenteBaixo ? 'Limpar filtro' : 'Ver itens') : undefined} />
+                            </section>
+                            {graficoNaFaixa && grafico}
+                        </div>
+                    </div>
                 </div>
-            </div>
 
-            <main className="dashboard-content">
-                <CategoryValueChart
-                    linhas={linhasValor}
-                    total={estatisticas.valor}
-                    categoriaAtiva={categoriaAtiva}
-                    onSelecionar={selecionarCategoria}
-                />
-
-                <section ref={painelRef} className="panel" aria-labelledby="secao-inventario">
-                    {/* sem valor em estoque o gráfico (02) não aparece: o inventário assume o número dele */}
-                    <h2 className="secao" id="secao-inventario">
-                        <span className="secao-num">{estatisticas.valor > 0 ? '03' : '02'}</span>Inventário
-                    </h2>
-                    <div className="toolbar">
-                        <div className="search">
-                            <Search size={16} className="search-icon" aria-hidden="true" />
-                            <input
-                                ref={buscaRef}
-                                type="search"
-                                placeholder="Buscar por nome, categoria ou ID"
-                                value={busca}
-                                onChange={(e) => setBusca(e.target.value)}
-                                aria-label="Buscar produtos"
-                                maxLength={100}
-                            />
-                            {busca
-                                ? <button type="button" className="search-clear" onClick={() => setBusca('')} aria-label="Limpar busca"><X size={14} /></button>
-                                : <kbd>/</kbd>}
-                        </div>
-                        <div className={`campo-select categoria-select ${categoriaAtiva !== 'Todas' ? 'ativo' : ''}`}>
-                            <select aria-label="Filtrar por categoria" value={categoriaAtiva} onChange={(e) => setCategoriaAtiva(e.target.value)}>
-                                <option value="Todas">Todas as categorias</option>
-                                {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
-                            </select>
-                            <ChevronDown size={15} className="sort-seta" aria-hidden="true" />
-                        </div>
-                        <div className="campo-select sort-select">
-                            <select aria-label="Ordenar por" value={`${ordem.campo}-${ordem.direcao}`} onChange={escolherOrdem}>
-                                {ORDENACOES.map(({ valor, rotulo }) => <option key={valor} value={valor}>{rotulo}</option>)}
-                            </select>
-                            <ChevronDown size={15} className="sort-seta" aria-hidden="true" />
-                        </div>
-                        <Button
-                            variante="ghost"
-                            icon={RefreshCw}
-                            className={`btn-icon ${atualizando ? 'girando' : ''}`}
-                            onClick={atualizarLista}
-                            aria-label={atualizando ? 'Atualizando a lista' : 'Atualizar lista'}
-                            aria-busy={atualizando || undefined}
-                            title="Atualizar lista"
-                        />
-                    </div>
-
-                    {!carregando && erroCarga && produtos.length > 0 && (
-                        <div className="aviso-carga" role="status">
-                            <CircleAlert size={16} aria-hidden="true" />
-                            <span>
-                                Não foi possível atualizar a lista ({erroCarga.replace(/\.$/, '')}).
-                                {atualizadoEm && ` Mostrando os dados das ${hora.format(atualizadoEm)}.`}
-                            </span>
-                            <button type="button" onClick={atualizarLista} disabled={atualizando}>
-                                {atualizando ? 'Tentando…' : 'Tentar de novo'}
-                            </button>
-                        </div>
-                    )}
-
-                    {somenteBaixo && (
-                        <div className="filtro-ativo">
-                            <span>Mostrando só itens com até {ESTOQUE_BAIXO} unidades.</span>
-                            <button type="button" onClick={() => setSomenteBaixo(false)}>Limpar</button>
-                        </div>
-                    )}
-
-                    <div className={`table ${isAdmin ? 'with-actions' : ''}`} role="table" aria-label="Produtos">
-                        <div className="table-head" role="row">
-                            {COLUNAS.map(({ campo, rotulo }) => {
-                                const ativo = ordem.campo === campo;
-                                const Icone = !ativo ? ArrowUpDown : ordem.direcao === 'asc' ? ArrowUp : ArrowDown;
-                                return (
-                                    <div
-                                        key={campo}
-                                        role="columnheader"
-                                        aria-sort={ativo ? (ordem.direcao === 'asc' ? 'ascending' : 'descending') : undefined}
-                                        className={`th th-${campo} ${ativo ? 'sorted' : ''}`}
-                                    >
-                                        <button type="button" className="th-btn" onClick={() => alternarOrdem(campo)}>
-                                            {rotulo} <Icone size={13} aria-hidden="true" />
-                                        </button>
-                                    </div>
-                                );
-                            })}
-                            {isAdmin && <span className="th th-acoes" role="columnheader"><span className="sr-only">Ações</span></span>}
-                        </div>
-
-                        <div className="table-body" role="rowgroup">
-                            {carregando && Array.from({ length: 5 }).map((_, i) => (
-                                <div key={i} className="row skeleton" aria-hidden="true">
-                                    <span /><span /><span /><span /><span />{isAdmin && <span />}
-                                </div>
-                            ))}
-
-                            {!carregando && visiveis.map((p) => (
-                                <ProductRow
-                                    key={p.id}
-                                    produto={p}
-                                    isAdmin={isAdmin}
-                                    onEditar={abrirEdicao}
-                                    onExcluir={setProdutoExcluir}
+                <div className="dashboard-content">
+                    <section ref={painelRef} className="panel" aria-labelledby="secao-inventario">
+                        {/* sem gráfico (01) o inventário assume o número dele; tabIndex -1: alvo do "Pular para a lista" */}
+                        <h2 className="secao" id="secao-inventario" tabIndex={-1} ref={inventarioRef}>
+                            <span className="secao-num" aria-hidden="true">{temGrafico ? '02' : '01'}</span>Inventário
+                        </h2>
+                        <div className="toolbar">
+                            <div className="search">
+                                <Search size={16} className="search-icon" aria-hidden="true" />
+                                <input
+                                    ref={buscaRef}
+                                    type="search"
+                                    placeholder="Buscar por nome, categoria ou ID"
+                                    value={busca}
+                                    onChange={(e) => setBusca(e.target.value)}
+                                    aria-label="Buscar produtos"
+                                    maxLength={100}
                                 />
-                            ))}
-
-                            {falhouSemDados && (
-                                <div className="empty-state erro-carga" role="alert">
-                                    <CircleAlert size={28} aria-hidden="true" />
-                                    <strong>Não foi possível carregar o estoque</strong>
-                                    <p>{erroCarga.replace(/\.?$/, '.')} Isso não quer dizer que o estoque esteja vazio.</p>
-                                    <Button icon={RefreshCw} className="btn-sm" onClick={atualizarLista} carregando={atualizando}>
-                                        Tentar de novo
-                                    </Button>
-                                </div>
-                            )}
-
-                            {!carregando && !falhouSemDados && visiveis.length === 0 && (
-                                <div className="empty-state">
-                                    <PackageOpen size={28} aria-hidden="true" />
-                                    <strong>{filtroAtivo ? 'Nenhum produto encontrado' : 'Nenhum produto cadastrado'}</strong>
-                                    <p>{filtroAtivo
-                                        ? 'Tente outro termo ou limpe os filtros.'
-                                        : isAdmin ? 'Cadastre o primeiro item do estoque.' : 'Ainda não há itens no estoque.'}
-                                    </p>
-                                    {filtroAtivo && (
-                                        <Button variante="ghost" className="btn-sm" onClick={limparFiltros}>
-                                            Limpar filtros
-                                        </Button>
-                                    )}
-                                    {!filtroAtivo && isAdmin && (
-                                        <Button icon={Plus} className="btn-sm" onClick={abrirNovo}>Novo produto</Button>
-                                    )}
-                                </div>
-                            )}
+                                {busca
+                                    ? <button type="button" className="search-clear" onClick={() => setBusca('')} aria-label="Limpar busca"><X size={14} /></button>
+                                    : <kbd>/</kbd>}
+                            </div>
+                            <div className={`campo-select categoria-select ${categoriaAtiva !== 'Todas' ? 'ativo' : ''}`}>
+                                <select aria-label="Filtrar por categoria" value={categoriaAtiva} onChange={(e) => setCategoriaAtiva(e.target.value)}>
+                                    <option value="Todas">Todas as categorias</option>
+                                    {categorias.map((c) => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <ChevronDown size={15} className="sort-seta" aria-hidden="true" />
+                            </div>
+                            <div className="campo-select sort-select">
+                                <select aria-label="Ordenar por" value={`${ordem.campo}-${ordem.direcao}`} onChange={escolherOrdem}>
+                                    {ORDENACOES.map(({ valor, rotulo }) => <option key={valor} value={valor}>{rotulo}</option>)}
+                                </select>
+                                <ChevronDown size={15} className="sort-seta" aria-hidden="true" />
+                            </div>
+                            <Button
+                                variante="ghost"
+                                icon={RefreshCw}
+                                className={`btn-icon ${atualizando ? 'girando' : ''}`}
+                                onClick={atualizarLista}
+                                aria-label={atualizando ? 'Atualizando a lista' : 'Atualizar lista'}
+                                aria-busy={atualizando || undefined}
+                                title="Atualizar lista"
+                            />
                         </div>
-                    </div>
 
-                    {!carregando && produtos.length > 0 && (
-                        <p className="table-footer">
-                            {visiveis.length} de {produtos.length} produtos
-                        </p>
-                    )}
-                </section>
+                        {!carregando && erroCarga && produtos.length > 0 && (
+                            <div className="aviso-carga" role="status">
+                                <CircleAlert size={16} aria-hidden="true" />
+                                <span>
+                                    Não foi possível atualizar a lista ({erroCarga.replace(/\.$/, '')}).
+                                    {atualizadoEm && ` Mostrando os dados das ${hora.format(atualizadoEm)}.`}
+                                </span>
+                                <button type="button" onClick={atualizarLista} disabled={atualizando}>
+                                    {atualizando ? 'Tentando…' : 'Tentar de novo'}
+                                </button>
+                            </div>
+                        )}
+
+                        {somenteBaixo && (
+                            <div className="filtro-ativo">
+                                <span>Mostrando só itens com até {ESTOQUE_BAIXO} unidades.</span>
+                                <button type="button" onClick={() => setSomenteBaixo(false)}>Limpar</button>
+                            </div>
+                        )}
+
+                        <div className={`table ${isAdmin ? 'with-actions' : ''}`} role="table" aria-label="Produtos">
+                            <div className="table-head" role="row">
+                                {COLUNAS.map(({ campo, rotulo }) => {
+                                    const ativo = ordem.campo === campo;
+                                    const Icone = !ativo ? ArrowUpDown : ordem.direcao === 'asc' ? ArrowUp : ArrowDown;
+                                    return (
+                                        <div
+                                            key={campo}
+                                            role="columnheader"
+                                            aria-sort={ativo ? (ordem.direcao === 'asc' ? 'ascending' : 'descending') : undefined}
+                                            className={`th th-${campo} ${ativo ? 'sorted' : ''}`}
+                                        >
+                                            <button type="button" className="th-btn" onClick={() => alternarOrdem(campo)}>
+                                                {rotulo} <Icone size={13} aria-hidden="true" />
+                                            </button>
+                                        </div>
+                                    );
+                                })}
+                                {isAdmin && <span className="th th-acoes" role="columnheader"><span className="sr-only">Ações</span></span>}
+                            </div>
+
+                            <div className="table-body" role="rowgroup">
+                                {carregando && Array.from({ length: 5 }).map((_, i) => (
+                                    <div key={i} className="row skeleton" aria-hidden="true">
+                                        <span /><span /><span /><span /><span />{isAdmin && <span />}
+                                    </div>
+                                ))}
+
+                                {!carregando && visiveis.map((p) => (
+                                    <ProductRow
+                                        key={p.id}
+                                        produto={p}
+                                        isAdmin={isAdmin}
+                                        onEditar={abrirEdicao}
+                                        onExcluir={setProdutoExcluir}
+                                    />
+                                ))}
+
+                                {falhouSemDados && (
+                                    <div className="empty-state erro-carga" role="alert">
+                                        <CircleAlert size={28} aria-hidden="true" />
+                                        <strong>Não foi possível carregar o estoque</strong>
+                                        <p>{erroCarga.replace(/\.?$/, '.')} Isso não quer dizer que o estoque esteja vazio.</p>
+                                        <Button icon={RefreshCw} className="btn-sm" onClick={atualizarLista} carregando={atualizando}>
+                                            Tentar de novo
+                                        </Button>
+                                    </div>
+                                )}
+
+                                {!carregando && !falhouSemDados && visiveis.length === 0 && (
+                                    <div className="empty-state">
+                                        <PackageOpen size={28} aria-hidden="true" />
+                                        <strong>{filtroAtivo ? 'Nenhum produto encontrado' : 'Nenhum produto cadastrado'}</strong>
+                                        <p>{filtroAtivo
+                                            ? 'Tente outro termo ou limpe os filtros.'
+                                            : isAdmin ? 'Cadastre o primeiro item do estoque.' : 'Ainda não há itens no estoque.'}
+                                        </p>
+                                        {filtroAtivo && (
+                                            <Button variante="ghost" className="btn-sm" onClick={limparFiltros}>
+                                                Limpar filtros
+                                            </Button>
+                                        )}
+                                        {!filtroAtivo && isAdmin && (
+                                            <Button icon={Plus} className="btn-sm" onClick={abrirNovo}>Novo produto</Button>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* aria-live: ao filtrar, o leitor de tela anuncia a nova contagem */}
+                        {!carregando && produtos.length > 0 && (
+                            <p className="table-footer" aria-live="polite" aria-atomic="true">
+                                {visiveis.length} de {produtos.length} produtos
+                            </p>
+                        )}
+                    </section>
+
+                    {/* telas estreitas: o gráfico vem depois da lista */}
+                    {!graficoNaFaixa && grafico}
+                </div>
             </main>
 
             <ProductFormModal

@@ -6,12 +6,38 @@ const formatarTotal = (v) => (v >= 100000 ? moedaTotal.format(v) : moeda.format(
 const moedaCurta = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL', notation: 'compact', maximumSignificantDigits: 3 });
 const porcento = new Intl.NumberFormat('pt-BR', { style: 'percent', maximumFractionDigits: 0 });
 
+// Enquanto carrega, o mesmo número de linhas que o gráfico costuma ter (4 categorias + "Outras"):
+// o espaço já fica reservado e a lista não pula quando os dados chegam.
+const LINHAS_ESQUELETO = 5;
+
 // Barras horizontais em ordem de valor, uma cor só, com nome e valor escritos em cada linha.
 // Com dados desiguais (uma categoria com 84%) cada categoria continua legível — numa barra única
 // as menores viravam tiras impossíveis de comparar.
 // `linhas`: [{ nome, valor, membros? }] em ordem decrescente; "Outras" tem `membros` e não filtra.
-const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar }) => {
-    if (!total) return null;
+// `numero`: número da seção ("01"), decorativo — escondido do leitor de tela.
+const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar, carregando = false, numero }) => {
+    if (!carregando && !total) return null;
+
+    const titulo = (
+        <h2 className="secao" id="titulo-valor-categoria">
+            {numero && <span className="secao-num" aria-hidden="true">{numero}</span>}
+            Valor por categoria
+        </h2>
+    );
+
+    if (carregando) {
+        return (
+            <section className="chart-card cantoneiras" aria-labelledby="titulo-valor-categoria" aria-busy="true">
+                {/* "Total —" como nos indicadores: mantém a altura do cabeçalho igual à do gráfico carregado */}
+                <div className="chart-head">{titulo}<span className="chart-total">Total —</span></div>
+                <ul className="cat-lista" aria-hidden="true">
+                    {Array.from({ length: LINHAS_ESQUELETO }).map((_, i) => (
+                        <li key={i} className="cat-esqueleto"><span /><span /></li>
+                    ))}
+                </ul>
+            </section>
+        );
+    }
 
     // a maior barra ocupa a trilha inteira; as outras são proporcionais a ela
     const maior = Math.max(...linhas.map((l) => l.valor));
@@ -19,7 +45,7 @@ const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar }) => 
     return (
         <section className="chart-card cantoneiras" aria-labelledby="titulo-valor-categoria">
             <div className="chart-head">
-                <h2 className="secao" id="titulo-valor-categoria"><span className="secao-num">02</span>Valor por categoria</h2>
+                {titulo}
                 <span className="chart-total" title={moeda.format(total)}>Total {formatarTotal(total)}</span>
             </div>
 
@@ -48,7 +74,7 @@ const CategoryValueChart = ({ linhas, total, categoriaAtiva, onSelecionar }) => 
                                     className="cat-linha"
                                     aria-pressed={categoriaAtiva === l.nome}
                                     aria-label={`${l.nome}: ${moeda.format(l.valor)}, ${porcento.format(parte)} do valor. Filtrar a lista`}
-                                    title={moeda.format(l.valor)}
+                                    title={`${l.nome}: ${moeda.format(l.valor)}`}
                                     onClick={() => onSelecionar(l.nome)}
                                 >
                                     {conteudo}

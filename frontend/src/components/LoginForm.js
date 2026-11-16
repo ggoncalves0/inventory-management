@@ -5,9 +5,11 @@ import { useAuth } from '../context/AuthContext';
 import { mensagemDeErro } from '../services/api';
 import Field from './Field';
 import Button from './Button';
+import useTituloDaPagina from '../utils/useTituloDaPagina';
 
 const LoginForm = () => {
     const { login } = useAuth();
+    useTituloDaPagina('Entrar');
     // Vindo do cadastro (quando o login automático falha), o usuário já chega preenchido
     const { state } = useLocation();
     const usuarioInicial = state?.username ?? '';
